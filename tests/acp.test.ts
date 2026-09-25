@@ -52,3 +52,33 @@ test("POST /chat uses ACP when an agent is spawned", async () => {
     await stopKernel(ctx);
   }
 });
+
+test("ACP timeout cancels and resumes the session", async () => {
+  const port = await freePort();
+  const ctx = await startKernel([
+    [webPlugin, { port, host: "127.0.0.1" }],
+    loaderPlugin,
+    [
+      agentPlugin,
+      {
+        acpCommand: process.execPath,
+        acpArgs: ["--import", "tsx", fakeAcp],
+        origin: `http://127.0.0.1:${port}`,
+        promptTimeoutMs: 200,
+        acpHang: true,
+      },
+    ],
+  ]);
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: "again" }),
+    });
+    assert.equal(res.status, 200);
+    const data = (await res.json()) as { text: string };
+    assert.equal(data.text, "acp:again");
+  } finally {
+    await stopKernel(ctx);
+  }
+});

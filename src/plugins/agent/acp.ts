@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from "node:fs";
 import type { ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
 
@@ -21,6 +22,8 @@ export class AcpClient {
   private sessionId: string | null = null;
   private chunks: string[] = [];
   private closed = false;
+  private startOpts: { cwd: string; mcpServers?: McpServerSpec[] } | null = null;
+  private chain: Promise<unknown> = Promise.resolve();
 
   constructor(private child: ChildProcess) {
     const rl = createInterface({ input: child.stdout! });
@@ -53,7 +56,7 @@ export class AcpClient {
       return;
     }
     if (msg.method && msg.id != null && msg.result == null && !msg.error) {
-      this.reply(msg.id, this.clientResult(msg.method));
+      this.reply(msg.id, this.clientResult(msg.method, msg.params ?? {}));
       return;
     }
     if (msg.id == null) return;
@@ -64,9 +67,22 @@ export class AcpClient {
     else p.resolve(msg.result);
   }
 
-  private clientResult(method: string): unknown {
+  private clientResult(method: string, params: Record<string, unknown>): unknown {
     if (method.includes("requestPermission") || method.endsWith("/request_permission")) {
       return { outcome: { outcome: "selected", optionId: "allow-always" } };
+    }
+    if (method.includes("read_text_file") || method.endsWith("readTextFile")) {
+      const path = String(params.path ?? "");
+      try {
+        return { content: readFileSync(path, "utf8") };
+      } catch (err) {
+        return { content: "", error: String(err) };
+      }
+    }
+    if (method.includes("write_text_file") || method.endsWith("writeTextFile")) {
+      const path = String(params.path ?? "");
+      writeFileSync(path, String(params.content ?? ""));
+      return {};
     }
     return {};
   }
@@ -108,9 +124,10 @@ export class AcpClient {
   }
 
   async start(opts: { cwd: string; mcpServers?: McpServerSpec[] }): Promise<void> {
+    this.startOpts = opts;
     await this.send("initialize", {
       protocolVersion: 1,
-      clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
+      clientCapabilities: {},
       clientInfo: { name: "fregoli", version: "0.0.0" },
     });
     const mcpServers = (opts.mcpServers ?? []).map((s) => ({
@@ -127,7 +144,40 @@ export class AcpClient {
     this.sessionId = result.sessionId ?? "default";
   }
 
-  async prompt(text: string): Promise<string> {
+  async recover(): Promise<void> {
+    if (!this.sessionId) return;
+    try {
+      await this.send("session/cancel", { sessionId: this.sessionId }, 5_000);
+    } catch {
+      /* still wedged; try load */
+    }
+    try {
+      const loaded = (await this.send(
+        "session/load",
+        { sessionId: this.sessionId, cwd: this.startOpts?.cwd },
+        10_000,
+      )) as { sessionId?: string };
+      if (loaded.sessionId) this.sessionId = loaded.sessionId;
+      return;
+    } catch {
+      /* fall through to a new session */
+    }
+    if (!this.startOpts) return;
+    const mcpServers = (this.startOpts.mcpServers ?? []).map((s) => ({
+      name: s.name,
+      command: s.command,
+      args: s.args ?? [],
+      env: Object.entries(s.env ?? {}).map(([name, value]) => ({ name, value })),
+    }));
+    const created = (await this.send("session/new", {
+      cwd: this.startOpts.cwd,
+      mcpServers,
+      _meta: { yoloMode: true, systemPromptOverride: FREGOLI_RULES },
+    })) as { sessionId?: string };
+    this.sessionId = created.sessionId ?? this.sessionId;
+  }
+
+  private async promptOnce(text: string, timeoutMs: number): Promise<string> {
     if (!this.sessionId) throw new Error("no ACP session");
     this.chunks = [];
     await this.send(
@@ -136,9 +186,26 @@ export class AcpClient {
         sessionId: this.sessionId,
         prompt: [{ type: "text", text }],
       },
-      120_000,
+      timeoutMs,
     );
     const out = this.chunks.join("");
     return out || "(no reply)";
+  }
+
+  async prompt(text: string, timeoutMs = 120_000): Promise<string> {
+    const run = this.chain.then(async () => {
+      try {
+        return await this.promptOnce(text, timeoutMs);
+      } catch (err) {
+        if (!String(err).includes("ACP timeout")) throw err;
+        await this.recover();
+        return await this.promptOnce(text, timeoutMs);
+      }
+    });
+    this.chain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return await run;
   }
 }

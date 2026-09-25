@@ -14,6 +14,7 @@ declare module "cordis" {
 export class Chat extends Service {
   grok: ChildProcess | null = null;
   acp: AcpClient | null = null;
+  promptTimeoutMs = 120_000;
 
   constructor(ctx: Context) {
     super(ctx, "chat");
@@ -22,7 +23,7 @@ export class Chat extends Service {
   async reply(text: string): Promise<string> {
     if (!this.acp) return `stub: ${text}`;
     try {
-      return await this.acp.prompt(text);
+      return await this.acp.prompt(text, this.promptTimeoutMs);
     } catch (err) {
       return `agent error: ${String(err)}`;
     }
@@ -35,6 +36,8 @@ export type AgentConfig = {
   acp?: boolean;
   acpCommand?: string;
   acpArgs?: string[];
+  promptTimeoutMs?: number;
+  acpHang?: boolean;
 };
 
 export const agentPlugin = {
@@ -50,9 +53,11 @@ export const agentPlugin = {
       cwd: appRoot,
       command: config.acpCommand,
       args: config.acpArgs,
+      env: config.acpHang ? { FAKE_ACP_HANG: "1" } : undefined,
     });
     if (!child) return;
     chat.grok = child;
+    if (config.promptTimeoutMs) chat.promptTimeoutMs = config.promptTimeoutMs;
     const mcpPath = fileURLToPath(new URL("../../mcp.ts", import.meta.url));
     const mcpServers: McpServerSpec[] = config.origin
       ? [

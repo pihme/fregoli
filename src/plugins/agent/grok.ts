@@ -9,7 +9,7 @@ export function whichGrok(): string | null {
 
 export function spawnAcpAgent(
   ctx: Context,
-  opts: { cwd: string; command?: string; args?: string[] },
+  opts: { cwd: string; command?: string; args?: string[]; env?: NodeJS.ProcessEnv },
 ): ChildProcess | null {
   const command = opts.command ?? whichGrok();
   if (!command) return null;
@@ -17,6 +17,7 @@ export function spawnAcpAgent(
   const child = spawn(command, args, {
     cwd: opts.cwd,
     stdio: ["pipe", "pipe", "pipe"],
+    env: opts.env ? { ...process.env, ...opts.env } : process.env,
   });
   ctx.effect(() => {
     return () => {
