@@ -13,10 +13,10 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 
 ## Status
 
-- **Last completed step:** 10
-- **Next step:** none in this plan. Follow-ups: wire ACP prompt (chat still stub); expose observe/load as MCP for Grok instead of only HTTP.
+- **Last completed step:** 10 + ACP/MCP
+- **Next step:** none required. Optional: live Grok ACP against xAI; wait_click MCP tool.
 - **Branch:** `main`
-- **Last local commit:** `42e1829` Add Hermetarium inhabitant image
+- **Last local commit:** `2c82d1a` Wire ACP chat and MCP observe/load tools
 - **Loader config filename:** `fregoli.json`
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
