@@ -31,10 +31,11 @@ export const plugin = {
 ```
 
 2. Only load it when the file is complete (valid `apply`, not half-written).
-3. Call MCP `load_plugin` with `{ "file": "/absolute/path/to/plugin.ts" }`.
-4. Call `reload_page` so the operator sees the new canvas. The assistant panel and chat history stay open.
-5. Call `list_plugins` to see fibers and states (`ACTIVE` means the UI should have changed).
-6. Call `unload_plugin` with `{ "name": "my-feature" }` to reverse it.
+3. Write runtime plugins under `plugins/runtime/<name>.ts` (gitignored). Shipped plugins live in `plugins/shipped/` (in git). Kernel plugins are `src/plugins/` — do not put canvas features there.
+4. Call MCP `load_plugin` with `{ "file": "plugins/runtime/<name>.ts" }` or an absolute path.
+5. Call `reload_page` so the operator sees the new canvas. The assistant panel and chat history stay open.
+6. Call `list_plugins` to see fibers and states (`ACTIVE` means the UI should have changed).
+7. Call `unload_plugin` with `{ "name": "my-feature" }` to reverse it.
 
 Boot fibers: `web`, `agent`, `assistant`, `loaderApi`. Do not unload `web` unless you are replacing HTTP. Do not unload `agent` (that is you).
 

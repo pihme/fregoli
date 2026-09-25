@@ -1,6 +1,8 @@
+import { isAbsolute, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Context, Plugin } from "cordis";
 import { FiberState, Service } from "cordis";
+import { runtimePluginsDir } from "./config.ts";
 
 declare module "cordis" {
   interface Context {
@@ -16,10 +18,11 @@ export class LoaderApi extends Service {
   }
 
   async mount(file: string) {
-    const fiber = await mountPlugin(this.ctx, file);
+    const resolved = resolvePluginPath(file);
+    const fiber = await mountPlugin(this.ctx, resolved);
     const name = fiber.name || file;
-    this.files.set(name, file);
-    return { name, state: fiber.state, file };
+    this.files.set(name, resolved);
+    return { name, state: fiber.state, file: resolved };
   }
 
   list() {
@@ -57,6 +60,12 @@ export const loaderPlugin = {
     await ctx.plugin(LoaderApi);
   },
 };
+
+export function resolvePluginPath(file: string, appRoot = process.cwd()): string {
+  if (isAbsolute(file)) return file;
+  if (file.startsWith("plugins/")) return join(appRoot, file);
+  return join(appRoot, runtimePluginsDir, file);
+}
 
 export async function importPlugin(file: string): Promise<Plugin> {
   const url = pathToFileURL(file).href + `?t=${Date.now()}`;

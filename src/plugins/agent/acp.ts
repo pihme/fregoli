@@ -14,7 +14,7 @@ export type McpServerSpec = {
   env?: Record<string, string>;
 };
 
-export const FREGOLI_RULES = `You are the Fregoli in-app agent. Read skill fregoli-app (in .grok/skills/fregoli-app). The canvas is the product UI; this chat is only the assistant. Change the app by writing a complete Cordis plugin file, then MCP load_plugin (absolute path), then reload_page so the user sees it (assistant stays open with history). Use list_plugins and unload_plugin. Use observe_page to see what the user sees. Do not unload web or agent. Do not mount half-written files.`;
+export const FREGOLI_RULES = `You are the Fregoli in-app agent. Read skill fregoli-app (in .grok/skills/fregoli-app). The canvas is the product UI; this chat is only the assistant. Write new canvas plugins under plugins/runtime/ (not src/plugins or plugins/shipped). Then MCP load_plugin and reload_page. Use list_plugins and unload_plugin. Use observe_page to see what the user sees. Do not unload web or agent. Do not mount half-written files.`;
 
 export class AcpClient {
   private nextId = 1;

@@ -1,6 +1,7 @@
-import { resolve } from "node:path";
+import { readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import type { Context, Plugin } from "cordis";
-import { loadConfig } from "./config.ts";
+import { loadConfig, shippedPluginsDir } from "./config.ts";
 import { startKernel } from "./kernel.ts";
 import { loaderPlugin, mountPlugin } from "./loader.ts";
 import { agentPlugin } from "./plugins/agent/index.ts";
@@ -33,8 +34,23 @@ export async function boot(options: BootOptions = {}): Promise<Context> {
   const wantAssistant = options.forceAssistant || cfg.assistant;
   if (wantAssistant) plugins.push(assistantPlugin);
   const ctx = await startKernel(plugins);
+  for (const file of listShippedPlugins(appRoot)) {
+    await mountPlugin(ctx, file);
+  }
   for (const file of cfg.plugins) {
     await mountPlugin(ctx, resolve(appRoot, file));
   }
   return ctx;
+}
+
+export function listShippedPlugins(appRoot: string): string[] {
+  const dir = join(appRoot, shippedPluginsDir);
+  try {
+    return readdirSync(dir)
+      .filter((name) => name.endsWith(".ts"))
+      .sort()
+      .map((name) => join(dir, name));
+  } catch {
+    return [];
+  }
 }

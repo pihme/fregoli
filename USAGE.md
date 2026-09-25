@@ -24,11 +24,21 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 | MCP | `src/mcp.ts` for Grok: `list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`, `reload_page` |
 | Skill | `.grok/skills/fregoli-app/SKILL.md` — how to change the running app |
 
+Canvas plugins:
+
+| Directory | Who writes it | Git |
+| --- | --- | --- |
+| `src/plugins/` | This repo (web, agent, assistant) | Tracked |
+| `plugins/shipped/` | This repo; every `*.ts` mounts at boot | Tracked |
+| `plugins/runtime/` | The agent at runtime | Gitignored |
+
 Saved config is `fregoli.json` in the process cwd (app root):
 
 ```json
 { "assistant": true, "plugins": [] }
 ```
+
+`plugins` is extra files to mount (typically under `plugins/runtime/`).
 
 `assistant: false` omits the stock chat UI on the next start. `fregoli --assistant` puts it back for that process only.
 

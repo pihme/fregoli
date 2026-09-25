@@ -3,8 +3,12 @@ import { join } from "node:path";
 
 export const configFileName = "fregoli.json";
 
+export const shippedPluginsDir = "plugins/shipped";
+export const runtimePluginsDir = "plugins/runtime";
+
 export interface AppConfig {
   assistant: boolean;
+  /** Extra plugin files (usually under plugins/runtime/), relative to app root. */
   plugins: string[];
 }
 

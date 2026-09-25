@@ -4,8 +4,15 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { FiberState } from "cordis";
 import { startKernel, stopKernel } from "../src/kernel.ts";
-import { isActive, loaderPlugin, mountPlugin } from "../src/loader.ts";
+import { isActive, loaderPlugin, mountPlugin, resolvePluginPath } from "../src/loader.ts";
+import { runtimePluginsDir } from "../src/config.ts";
 import { webPlugin } from "../src/plugins/web/index.ts";
+
+test("runtime plugin paths resolve under plugins/runtime", () => {
+  const p = resolvePluginPath("welcome.ts", "/app");
+  assert.equal(p, "/app/" + runtimePluginsDir + "/welcome.ts");
+  assert.equal(resolvePluginPath("/abs/x.ts", "/app"), "/abs/x.ts");
+});
 
 const draw = fileURLToPath(new URL("./fixtures/draw.ts", import.meta.url));
 const broken = fileURLToPath(new URL("./fixtures/broken.ts", import.meta.url));

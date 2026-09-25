@@ -11,7 +11,7 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 ## How to work here
 
 - TypeScript on Node 22+, ESM, npm `cordis` (cordiverse). Do not wrap `dsh`. Do not use `@deepseek-ai/cordis` unless `cordis` on npm is unusable.
-- Layout: `src/cli.ts`, `src/boot.ts`, `src/kernel.ts`, `src/plugins/{web,agent,assistant}/`, `src/mcp.ts`, `tests/`.
+- Layout: `src/cli.ts`, `src/boot.ts`, `src/kernel.ts`, `src/plugins/{web,agent,assistant}/` (kernel), `plugins/shipped/` (repo canvas plugins), `plugins/runtime/` (agent-written, gitignored), `src/mcp.ts`, `tests/`.
 - Boot plugins: **web** (8080, canvas, page bridge), **agent** (Grok CLI over ACP; stub if `grok` is missing), **assistant** (replaceable; `fregoli --assistant` remounts stock).
 - App root is process cwd. Config: `fregoli.json`.
 - HTTP handlers must use `ctx.get(name, true)` for services; `ctx.ui` off-fiber throws without inject.
