@@ -16,6 +16,9 @@ export function parseArgs(argv: string[]): {
 
 export function helpText(): string {
   return `usage: fregoli [--help] [--version] [--assistant]
+
+  --assistant   force the stock assistant UI for this start
+  --version     print version
 `;
 }
 

@@ -1,6 +1,6 @@
 # Fregoli
 
-A self-evolving web application on a Cordis kernel. Status: specified, not implemented.
+A self-evolving web application on a Cordis kernel. Status: first slice implemented (web, assistant, Grok ACP, loader gate, page bridge, MCP tools).
 
 ## 1. Name
 

@@ -1,23 +1,45 @@
 # Fregoli
 
-Self-evolving web application on a Cordis kernel, named for Leopoldo Fregoli, the quick-change artist. Boot plugins: web UI, **Grok CLI** as the agent, and a replaceable assistant. Specified, not implemented.
+[![CI](https://github.com/pihme/fregoli/actions/workflows/ci.yml/badge.svg)](https://github.com/pihme/fregoli/actions/workflows/ci.yml)
 
-CLI: `fregoli` (not `freg`). Flag: `fregoli --assistant`.
+Self-evolving web application on a Cordis kernel, named for Leopoldo Fregoli, the quick-change artist. One process, many appearances: plugins load and unload without restarting Node.
+
+The CLI name is `fregoli` in full; do not shorten to `freg`.
+
+- [SPEC.md](SPEC.md) — product spec
+- [USAGE.md](USAGE.md) — CLI, HTTP, Grok, Docker
+- [CONTRIBUTING.md](CONTRIBUTING.md) — tests, commits, versions
+
+## Run
+
+Needs Node 22+. For a real agent, Grok CLI on `PATH`.
 
 ```bash
+npm ci
 npx tsx src/cli.ts
 # http://127.0.0.1:8080/
 ```
 
-Inhabitant image (Hermetarium or any Docker host):
+Blank canvas, assistant in the lower right. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. `fregoli --assistant` forces the stock assistant UI.
+
+`fregoli/vX.Y.Z` GitHub Releases attach a source tarball. Local `--version` is `dev` unless `FREGOLI_VERSION` is set.
+
+## Pieces
+
+The **kernel** is Cordis. Capabilities are plugins.
+
+**Web** serves HTTP on 8080, the canvas, and the page bridge (DOM snapshot, highlight, user click).
+
+**Agent** spawns `grok agent --always-approve stdio` and speaks ACP. It hands Grok an MCP server (`observe_page`, `load_plugin`, `highlight`, `wait_click`). Unload kills that child.
+
+**Assistant** is its own plugin: lower-right chat, replaceable and removable.
+
+**Loader** mounts extra Cordis plugins from `fregoli.json` or `POST /load`. A failed `apply` does not become `ACTIVE` and does not replace the canvas.
+
+Running inside [Hermetarium](https://github.com/pihme/hermetarium) is a recommended deployment (listen on 8080), not a requirement.
 
 ```bash
 docker build -t fregoli:local .
 ```
 
-- [SPEC.md](SPEC.md) — product spec
-- [IMPLEMENTATION.md](IMPLEMENTATION.md) — interruptible implementation steps (local commits)
-
-Running inside [Hermetarium](https://github.com/pihme/hermetarium) is a recommended deployment, not a requirement.
-
-License: [PolyForm Noncommercial 1.0.0](LICENSE) (same family as Hermetarium). Not OSI Open Source.
+License: [PolyForm Noncommercial 1.0.0](LICENSE). Source-available, not OSI Open Source.
