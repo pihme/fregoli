@@ -84,3 +84,20 @@ test("highlight then user click returns a tool result", async () => {
     assert.equal(action.selector, "#drawn");
   });
 });
+
+test("GET /bridge/wait returns the user click", async () => {
+  await withWeb(async (port) => {
+    const waiting = fetch(`http://127.0.0.1:${port}/bridge/wait?timeout=3000`);
+    await new Promise((r) => setTimeout(r, 20));
+    await fetch(`http://127.0.0.1:${port}/bridge/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "click", selector: "#go" }),
+    });
+    const res = await waiting;
+    assert.equal(res.status, 200);
+    const action = (await res.json()) as { type: string; selector: string };
+    assert.equal(action.type, "click");
+    assert.equal(action.selector, "#go");
+  });
+});

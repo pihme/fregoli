@@ -61,6 +61,18 @@ test("MCP observe_page returns the live DOM snapshot", async () => {
     rpc(3, "tools/call", { name: "observe_page", arguments: {} });
     const call = (await read()) as { result: { content: Array<{ text: string }> } };
     assert.match(call.result.content[0].text, /id=live/);
+    const waiting = new Promise<Record<string, unknown>>((resolve) => {
+      rl.once("line", (line) => resolve(JSON.parse(line) as Record<string, unknown>));
+    });
+    rpc(4, "tools/call", { name: "wait_click", arguments: { selector: "#go", timeoutMs: 3000 } });
+    await new Promise((r) => setTimeout(r, 50));
+    await fetch(`http://127.0.0.1:${port}/bridge/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "click", selector: "#go" }),
+    });
+    const waited = (await waiting) as { result: { content: Array<{ text: string }> } };
+    assert.match(waited.result.content[0].text, /#go/);
   } finally {
     child.kill();
     await stopKernel(ctx);

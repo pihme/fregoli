@@ -29,6 +29,18 @@ const tools = [
       required: ["selector"],
     },
   },
+  {
+    name: "wait_click",
+    description: "Highlight a selector and wait for the user to click (or type) it",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string" },
+        timeoutMs: { type: "number" },
+      },
+      required: ["selector"],
+    },
+  },
 ];
 
 async function callHttp(path: string, init?: RequestInit): Promise<string> {
@@ -52,6 +64,15 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
       body: JSON.stringify({ selector: args.selector }),
     });
     return res.ok ? "ok" : await res.text();
+  }
+  if (name === "wait_click") {
+    await fetch(origin + "/bridge/highlight", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ selector: args.selector }),
+    });
+    const timeout = Number(args.timeoutMs ?? 15000);
+    return await callHttp("/bridge/wait?timeout=" + timeout);
   }
   throw new Error("unknown tool " + name);
 }

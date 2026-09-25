@@ -119,6 +119,26 @@ async function handle(
     }
     return;
   }
+  if (url.startsWith("/bridge/wait") && req.method === "GET") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    const timeoutMs = Number(new URL(url, "http://fregoli.local").searchParams.get("timeout") ?? "15000");
+    const action = await Promise.race([
+      bridge.waitForAction(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+    if (!action) {
+      res.writeHead(504, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "wait_click timeout" }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(action));
+    return;
+  }
   if (url === "/bridge/highlight" && req.method === "POST") {
     if (!bridge) {
       res.writeHead(503);
