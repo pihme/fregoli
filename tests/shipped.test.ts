@@ -29,7 +29,7 @@ test("default boot mounts shipped welcome canvas", async () => {
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     assert.match(html, /welcome-title/);
-    assert.match(html, /Heureka/);
+    assert.match(html, /Welcome/);
   } finally {
     await stopKernel(ctx);
   }
