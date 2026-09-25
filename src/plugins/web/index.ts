@@ -14,6 +14,7 @@ declare module "cordis" {
 export class Ui extends Service {
   canvasInner = "";
   assistantInner = "";
+  bootId = crypto.randomUUID();
 
   constructor(ctx: Context) {
     super(ctx, "ui");
@@ -33,6 +34,7 @@ export class Ui extends Service {
 <head>
 <meta charset="utf-8">
 <title>Fregoli</title>
+<script>window.FREGOLI_BOOT=${JSON.stringify(this.bootId)}</script>
 <style>
 html,body{margin:0;height:100%;font-family:system-ui,sans-serif}
 #canvas{position:absolute;inset:0}

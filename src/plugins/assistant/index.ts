@@ -72,6 +72,7 @@ body.assistant-open #assistant-panel{display:flex}
       text: el.textContent,
     }));
     sessionStorage.setItem(KEY, JSON.stringify({
+      boot: window.FREGOLI_BOOT,
       open: document.body.classList.contains('assistant-open'),
       messages,
     }));
@@ -89,9 +90,11 @@ body.assistant-open #assistant-panel{display:flex}
   }
   try {
     const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-    if (saved && Array.isArray(saved.messages)) {
+    if (saved && saved.boot === window.FREGOLI_BOOT && Array.isArray(saved.messages)) {
       for (const m of saved.messages) bubble(m.role, m.text);
       if (saved.open) setOpen(true);
+    } else {
+      sessionStorage.removeItem(KEY);
     }
   } catch (e) {}
   form.addEventListener('submit', async (e) => {
