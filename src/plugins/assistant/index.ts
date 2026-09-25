@@ -58,12 +58,24 @@ body.assistant-open #assistant-panel{display:flex}
   const form = document.getElementById('assistant-form');
   const input = document.getElementById('assistant-input');
   const send = document.getElementById('assistant-send');
+  const KEY = 'fregoli-assistant';
   const setOpen = (open) => {
     document.body.classList.toggle('assistant-open', open);
     btn.setAttribute('aria-expanded', String(open));
     btn.hidden = open;
+    save();
     if (open) input.focus();
   };
+  function save() {
+    const messages = [...thread.querySelectorAll('.msg-user,.msg-agent')].map((el) => ({
+      role: el.classList.contains('msg-user') ? 'user' : 'agent',
+      text: el.textContent,
+    }));
+    sessionStorage.setItem(KEY, JSON.stringify({
+      open: document.body.classList.contains('assistant-open'),
+      messages,
+    }));
+  }
   btn.addEventListener('click', () => setOpen(true));
   close.addEventListener('click', () => setOpen(false));
   function bubble(role, text) {
@@ -72,8 +84,16 @@ body.assistant-open #assistant-panel{display:flex}
     el.textContent = text;
     thread.appendChild(el);
     thread.scrollTop = thread.scrollHeight;
+    if (role === 'user' || role === 'agent') save();
     return el;
   }
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+    if (saved && Array.isArray(saved.messages)) {
+      for (const m of saved.messages) bubble(m.role, m.text);
+      if (saved.open) setOpen(true);
+    }
+  } catch (e) {}
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();

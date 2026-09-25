@@ -99,8 +99,20 @@ async function handle(
     return;
   }
   if (url === "/bridge/commands" && req.method === "GET") {
+    const cmds = bridge?.takeCommands() ?? { highlight: null, reload: false };
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ highlight: bridge?.pendingHighlight ?? null }));
+    res.end(JSON.stringify(cmds));
+    return;
+  }
+  if (url === "/bridge/reload" && req.method === "POST") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    bridge.requestReload();
+    res.writeHead(204);
+    res.end();
     return;
   }
   if (url === "/bridge/action" && req.method === "POST") {

@@ -85,6 +85,20 @@ test("highlight then user click returns a tool result", async () => {
   });
 });
 
+test("reload_page is a one-shot command for the browser", async () => {
+  await withWeb(async (port) => {
+    await fetch(`http://127.0.0.1:${port}/bridge/reload`, { method: "POST" });
+    const first = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(first.reload, true);
+    const second = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(second.reload, false);
+  });
+});
+
 test("GET /bridge/wait returns the user click", async () => {
   await withWeb(async (port) => {
     const waiting = fetch(`http://127.0.0.1:${port}/bridge/wait?timeout=3000`);

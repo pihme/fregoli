@@ -32,6 +32,7 @@ test("GET / includes the assistant control", async () => {
     const html = await res.text();
     assert.match(html, /id="assistant-control"/);
     assert.match(html, /id="assistant-thread"/);
+    assert.match(html, /fregoli-assistant/);
     assert.match(html, /id="canvas"/);
   } finally {
     await stopKernel(ctx);

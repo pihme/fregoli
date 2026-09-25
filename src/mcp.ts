@@ -44,6 +44,12 @@ const tools = [
     },
   },
   {
+    name: "reload_page",
+    description:
+      "Ask the operator's browser to reload so canvas changes appear. Assistant panel and chat history stay open.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "wait_click",
     description: "Highlight a selector and wait for the user to click (or type) it",
     inputSchema: {
@@ -78,6 +84,10 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: args.file }),
     });
+  }
+  if (name === "reload_page") {
+    const res = await fetch(origin + "/bridge/reload", { method: "POST" });
+    return res.ok ? "reload requested; assistant will keep its open chat" : await res.text();
   }
   if (name === "highlight") {
     const res = await fetch(origin + "/bridge/highlight", {

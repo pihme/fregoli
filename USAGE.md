@@ -21,7 +21,7 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 | Agent plugin | Spawns `grok agent --always-approve stdio` (ACP). Stub if `grok` is missing. |
 | Assistant plugin | Lower-right chat. Replaceable and removable. |
 | Loader | `POST /load` mounts a Cordis plugin file |
-| MCP | `src/mcp.ts` for Grok: `list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click` |
+| MCP | `src/mcp.ts` for Grok: `list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`, `reload_page` |
 | Skill | `.grok/skills/fregoli-app/SKILL.md` — how to change the running app |
 
 Saved config is `fregoli.json` in the process cwd (app root):
@@ -48,6 +48,7 @@ Base: `http://127.0.0.1:8080`
 | `/bridge/commands` | GET | `{ "highlight": "#sel" \| null }` |
 | `/bridge/highlight` | POST | `{ "selector": "#sel" }` |
 | `/bridge/action` | POST | `{ "type": "click"\|"type", "selector": "...", "value": "..." }` |
+| `/bridge/reload` | POST | Ask the tab to reload; assistant chat is restored open |
 | `/bridge/wait` | GET | `?timeout=15000` — wait for a user action |
 
 The page injects a small script that POSTs snapshots and reports clicks.

@@ -1,0 +1,4 @@
+{
+  "assistant": true,
+  "plugins": ["plugins/welcome.ts"]
+}

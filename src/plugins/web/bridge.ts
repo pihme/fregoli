@@ -20,6 +20,7 @@ type Tab = { snapshot: Snapshot; focusedAt: number };
 export class PageBridge extends Service {
   private tabs = new Map<string, Tab>();
   pendingHighlight: string | null = null;
+  pendingReload = false;
   private waiters: Array<(a: UserAction) => void> = [];
 
   constructor(ctx: Context) {
@@ -68,6 +69,16 @@ export class PageBridge extends Service {
     this.waiters = [];
     for (const w of waiters) w(action);
   }
+
+  requestReload(): void {
+    this.pendingReload = true;
+  }
+
+  takeCommands(): { highlight: string | null; reload: boolean } {
+    const reload = this.pendingReload;
+    this.pendingReload = false;
+    return { highlight: this.pendingHighlight, reload };
+  }
 }
 
 export const bridgeClientScript = `
@@ -100,6 +111,10 @@ export const bridgeClientScript = `
     try {
       const r = await fetch('/bridge/commands');
       const j = await r.json();
+      if (j.reload) {
+        location.reload();
+        return;
+      }
       if (j.highlight) {
         const node = document.querySelector(j.highlight);
         if (node) node.style.outline = '2px solid #c00';
