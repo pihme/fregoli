@@ -16,7 +16,7 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 - **Last completed step:** none (plan only)
 - **Next step:** 0
 - **Branch:** `main`
-- **Last local commit (plan):** *fill after committing this file*
+- **Last local commit (plan):** `1ccf8e5` Add interruptible implementation plan
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
 ## Layout (create as you go)
