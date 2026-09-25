@@ -13,10 +13,11 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 
 ## Status
 
-- **Last completed step:** none (plan only)
-- **Next step:** 0
+- **Last completed step:** 0
+- **Next step:** 1
 - **Branch:** `main`
-- **Last local commit (plan):** `1ccf8e5` Add interruptible implementation plan
+- **Last local commit:** `22075a7` Scaffold Fregoli Node + Cordis CLI
+- **Loader config filename:** `fregoli.yml` (not wired yet; step 5)
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
 ## Layout (create as you go)
