@@ -13,7 +13,7 @@ export type McpServerSpec = {
   env?: Record<string, string>;
 };
 
-export const FREGOLI_RULES = `This process is a Cordis graph. Boot plugins are web, agent, and assistant. The assistant UI is replaceable and may be removed. Change the app by writing Cordis plugins, Grok skills, and MCP servers, then load/unload via Fregoli tools (load_plugin, observe_page). The canvas is what users see. Half-written modules must not be mounted. You may install and run ordinary tools. If this is a sealed habitat, that is extra context.`;
+export const FREGOLI_RULES = `You are the Fregoli in-app agent. Read skill fregoli-app (in .grok/skills/fregoli-app). The canvas is the product UI; this chat is only the assistant. Change the app by writing a complete Cordis plugin file, then MCP load_plugin (absolute path). Use list_plugins and unload_plugin. Use observe_page to see what the user sees. Do not unload web or agent. Do not mount half-written files.`;
 
 export class AcpClient {
   private nextId = 1;

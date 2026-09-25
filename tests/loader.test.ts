@@ -46,6 +46,14 @@ test("mounting a plugin draws on the canvas without restart", async () => {
       body: JSON.stringify({ file: draw }),
     });
     assert.equal(viaHttp.status, 200);
+    const listed = await (await fetch(`http://127.0.0.1:${port2}/plugins`)).json() as Array<{ name: string }>;
+    assert.ok(listed.some((p) => p.name === "draw"));
+    const unloaded = await fetch(`http://127.0.0.1:${port2}/unload`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "draw" }),
+    });
+    assert.equal(unloaded.status, 200);
   } finally {
     await stopKernel(ctx);
   }

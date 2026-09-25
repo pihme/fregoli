@@ -12,12 +12,26 @@ const tools = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "list_plugins",
+    description: "List mounted Cordis fibers (name, state, source file if loaded via load_plugin)",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "load_plugin",
-    description: "Mount a Cordis plugin file; only ACTIVE fibers change the UI",
+    description: "Mount a finished Cordis plugin file (absolute path). UI follows ACTIVE fibers only.",
     inputSchema: {
       type: "object",
       properties: { file: { type: "string" } },
       required: ["file"],
+    },
+  },
+  {
+    name: "unload_plugin",
+    description: "Dispose a Cordis fiber by name from list_plugins. Do not unload web or agent.",
+    inputSchema: {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
     },
   },
   {
@@ -50,6 +64,14 @@ async function callHttp(path: string, init?: RequestInit): Promise<string> {
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
   if (name === "observe_page") return await callHttp("/observe");
+  if (name === "list_plugins") return await callHttp("/plugins");
+  if (name === "unload_plugin") {
+    return await callHttp("/unload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: args.name }),
+    });
+  }
   if (name === "load_plugin") {
     return await callHttp("/load", {
       method: "POST",

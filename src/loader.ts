@@ -9,12 +9,44 @@ declare module "cordis" {
 }
 
 export class LoaderApi extends Service {
+  private files = new Map<string, string>();
+
   constructor(ctx: Context) {
     super(ctx, "loaderApi");
   }
 
-  mount(file: string) {
-    return mountPlugin(this.ctx, file);
+  async mount(file: string) {
+    const fiber = await mountPlugin(this.ctx, file);
+    const name = fiber.name || file;
+    this.files.set(name, file);
+    return { name, state: fiber.state, file };
+  }
+
+  list() {
+    const out: Array<{ name: string; state: number; file?: string }> = [];
+    for (const rt of this.ctx.registry.values()) {
+      for (const fiber of rt.fibers) {
+        out.push({
+          name: fiber.name,
+          state: fiber.state,
+          file: this.files.get(fiber.name),
+        });
+      }
+    }
+    return out;
+  }
+
+  async unload(name: string) {
+    for (const rt of this.ctx.registry.values()) {
+      for (const fiber of rt.fibers) {
+        if (fiber.name === name) {
+          await fiber.dispose();
+          this.files.delete(name);
+          return { ok: true, name };
+        }
+      }
+    }
+    throw new Error("no plugin named " + name);
   }
 }
 

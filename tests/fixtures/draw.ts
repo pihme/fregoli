@@ -4,6 +4,9 @@ export const plugin = {
   name: "draw",
   inject: ["ui"],
   apply(ctx: Context) {
-    ctx.ui.setCanvas('<p id="drawn">hello-canvas</p>');
+    ctx.effect(() => {
+      ctx.ui.setCanvas('<p id="drawn">hello-canvas</p>');
+      return () => ctx.ui.setCanvas("");
+    });
   },
 };

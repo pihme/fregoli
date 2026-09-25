@@ -15,7 +15,7 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 - Boot plugins: **web** (8080, canvas, page bridge), **agent** (Grok CLI over ACP; stub if `grok` is missing), **assistant** (replaceable; `fregoli --assistant` remounts stock).
 - App root is process cwd. Config: `fregoli.json`.
 - HTTP handlers must use `ctx.get(name, true)` for services; `ctx.ui` off-fiber throws without inject.
-- Grok is the agent: `grok agent --always-approve stdio`. MCP tools in `src/mcp.ts` (`observe_page`, `load_plugin`, `highlight`, `wait_click`). Fregoli hosts MCP; Grok is the client. Do not add a second MCP client.
+- Grok is the agent: `grok agent --always-approve stdio`. MCP tools in `src/mcp.ts` (`list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`). Skill: `.grok/skills/fregoli-app`. Fregoli hosts MCP; Grok is the client.
 - Page snapshot is the serialized DOM of this origin. No WASM. Scanner is outside this process.
 - **Versions:** tag `fregoli/vX.Y.Z`. Conventional commits (`feat:` minor, `fix:`/`perf:` patch, `feat!:` or `BREAKING CHANGE:` major). Bump only when the commit touches `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `Dockerfile`, or `Makefile`. `.github/scripts/release.py` on push to `main` after CI.
 - Hermetarium is a recommended deployment, not required. Image listens on 8080.

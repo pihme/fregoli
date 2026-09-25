@@ -36,7 +36,8 @@ export class Ui extends Service {
 <style>
 html,body{margin:0;height:100%;font-family:system-ui,sans-serif}
 #canvas{position:absolute;inset:0}
-#assistant-slot{position:absolute;right:1.25rem;bottom:1.25rem;z-index:2}
+#assistant-slot{position:absolute;inset:0;z-index:2;pointer-events:none}
+#assistant-slot button,#assistant-slot #assistant-panel,#assistant-slot input{pointer-events:auto}
 </style>
 </head>
 <body>
@@ -153,6 +154,42 @@ async function handle(
     } catch {
       res.writeHead(400);
       res.end();
+    }
+    return;
+  }
+  if (url === "/plugins" && req.method === "GET") {
+    const api = ctx.get("loaderApi", true) as { list: () => unknown } | undefined;
+    if (!api) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(api.list()));
+    return;
+  }
+  if (url === "/unload" && req.method === "POST") {
+    const api = ctx.get("loaderApi", true) as
+      | { unload: (name: string) => Promise<unknown> }
+      | undefined;
+    if (!api) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    let name = "";
+    try {
+      name = (JSON.parse(await readBody(req)) as { name?: string }).name ?? "";
+    } catch {
+      name = "";
+    }
+    try {
+      const out = await api.unload(name);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(out));
+    } catch (err) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: String(err) }));
     }
     return;
   }

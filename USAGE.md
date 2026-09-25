@@ -21,7 +21,8 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 | Agent plugin | Spawns `grok agent --always-approve stdio` (ACP). Stub if `grok` is missing. |
 | Assistant plugin | Lower-right chat. Replaceable and removable. |
 | Loader | `POST /load` mounts a Cordis plugin file |
-| MCP | `src/mcp.ts` stdio tools for Grok: `observe_page`, `load_plugin`, `highlight`, `wait_click` |
+| MCP | `src/mcp.ts` for Grok: `list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click` |
+| Skill | `.grok/skills/fregoli-app/SKILL.md` — how to change the running app |
 
 Saved config is `fregoli.json` in the process cwd (app root):
 
@@ -39,7 +40,9 @@ Base: `http://127.0.0.1:8080`
 | --- | --- | --- |
 | `/` | GET | Canvas + assistant slot |
 | `/chat` | POST | `{ "text": "..." }` → `{ "text": "..." }` (ACP or stub) |
+| `/plugins` | GET | Mounted fibers |
 | `/load` | POST | `{ "file": "/abs/path/to/plugin.ts" }` |
+| `/unload` | POST | `{ "name": "draw" }` |
 | `/observe` | GET | Serialized DOM of the most recently focused connected tab |
 | `/bridge` | POST | Browser snapshot (`tabId`, `html`, `url`, `viewport`, `focused`) |
 | `/bridge/commands` | GET | `{ "highlight": "#sel" \| null }` |
