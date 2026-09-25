@@ -81,7 +81,7 @@ export class AcpClient {
     if (typeof update.text === "string") this.chunks.push(update.text);
   }
 
-  private send(method: string, params: unknown): Promise<unknown> {
+  private send(method: string, params: unknown, timeoutMs = 15_000): Promise<unknown> {
     if (this.closed) return Promise.reject(new Error("ACP closed"));
     const id = this.nextId++;
     this.child.stdin!.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
@@ -89,7 +89,7 @@ export class AcpClient {
       const t = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error("ACP timeout " + method));
-      }, 15_000);
+      }, timeoutMs);
       this.pending.set(id, {
         resolve: (v) => {
           clearTimeout(t);
@@ -130,10 +130,14 @@ export class AcpClient {
   async prompt(text: string): Promise<string> {
     if (!this.sessionId) throw new Error("no ACP session");
     this.chunks = [];
-    await this.send("session/prompt", {
-      sessionId: this.sessionId,
-      prompt: [{ type: "text", text }],
-    });
+    await this.send(
+      "session/prompt",
+      {
+        sessionId: this.sessionId,
+        prompt: [{ type: "text", text }],
+      },
+      120_000,
+    );
     const out = this.chunks.join("");
     return out || "(no reply)";
   }

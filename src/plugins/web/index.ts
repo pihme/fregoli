@@ -196,10 +196,15 @@ async function handle(
     } catch {
       text = "";
     }
-    const reply = await chat.reply(text);
-    const payload = JSON.stringify({ text: reply });
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(payload);
+    try {
+      const reply = await chat.reply(text);
+      const payload = JSON.stringify({ text: reply });
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(payload);
+    } catch (err) {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ text: `agent error: ${String(err)}` }));
+    }
     return;
   }
   if (url === "/" || url === "/index.html") {

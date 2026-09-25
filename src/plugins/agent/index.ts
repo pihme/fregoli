@@ -20,8 +20,12 @@ export class Chat extends Service {
   }
 
   async reply(text: string): Promise<string> {
-    if (this.acp) return await this.acp.prompt(text);
-    return `stub: ${text}`;
+    if (!this.acp) return `stub: ${text}`;
+    try {
+      return await this.acp.prompt(text);
+    } catch (err) {
+      return `agent error: ${String(err)}`;
+    }
   }
 }
 
