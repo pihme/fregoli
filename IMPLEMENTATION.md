@@ -13,12 +13,11 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 
 ## Status
 
-- **Last completed step:** 7
-- **Next step:** 8 (page bridge observe DOM)
+- **Last completed step:** 10
+- **Next step:** none in this plan. Follow-ups: wire ACP prompt (chat still stub); expose observe/load as MCP for Grok instead of only HTTP.
 - **Branch:** `main`
-- **Last local commit:** `a051af0` Expose Cordis load/unload to Grok
-- **Loader config filename:** `fregoli.json` (JSON, no extra YAML dependency)
-- **Notes:** Step 6 spawns `grok agent --always-approve stdio` when `grok` is on PATH; chat replies are still the in-process stub until ACP prompt is wired. Step 7 exposes load via `POST /load` (loaderApi service); not a separate MCP process yet.
+- **Last local commit:** `42e1829` Add Hermetarium inhabitant image
+- **Loader config filename:** `fregoli.json`
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
 ## Layout (create as you go)
