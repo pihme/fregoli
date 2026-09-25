@@ -13,11 +13,12 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 
 ## Status
 
-- **Last completed step:** 5
-- **Next step:** 6
+- **Last completed step:** 7
+- **Next step:** 8 (page bridge observe DOM)
 - **Branch:** `main`
-- **Last local commit:** `db96ace` Honor saved loader config and --assistant
+- **Last local commit:** `a051af0` Expose Cordis load/unload to Grok
 - **Loader config filename:** `fregoli.json` (JSON, no extra YAML dependency)
+- **Notes:** Step 6 spawns `grok agent --always-approve stdio` when `grok` is on PATH; chat replies are still the in-process stub until ACP prompt is wired. Step 7 exposes load via `POST /load` (loaderApi service); not a separate MCP process yet.
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
 ## Layout (create as you go)
