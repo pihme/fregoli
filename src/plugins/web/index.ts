@@ -1,11 +1,13 @@
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Context, Service } from "cordis";
+import { bridgeClientScript, PageBridge, type Snapshot, type UserAction } from "./bridge.ts";
 
 declare module "cordis" {
   interface Context {
     ui: Ui;
     httpServer: http.Server;
+    pageBridge: PageBridge;
   }
 }
 
@@ -40,6 +42,7 @@ html,body{margin:0;height:100%;font-family:system-ui,sans-serif}
 <body>
 <div id="canvas">${this.canvasInner}</div>
 <div id="assistant-slot">${this.assistantInner}</div>
+${bridgeClientScript}
 </body>
 </html>
 `;
@@ -58,6 +61,81 @@ async function handle(
   res: ServerResponse,
 ): Promise<void> {
   const url = req.url ?? "/";
+  const bridge = ctx.get("pageBridge", true) as PageBridge | undefined;
+  if (url === "/observe" && req.method === "GET") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    try {
+      const snap = bridge.observe();
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(snap));
+    } catch (err) {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: String(err) }));
+    }
+    return;
+  }
+  if (url === "/bridge" && req.method === "POST") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    try {
+      const body = JSON.parse(await readBody(req)) as Snapshot;
+      body.at = Date.now();
+      bridge.connect(body);
+      bridge.focus(body.tabId);
+      res.writeHead(204);
+      res.end();
+    } catch {
+      res.writeHead(400);
+      res.end();
+    }
+    return;
+  }
+  if (url === "/bridge/commands" && req.method === "GET") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ highlight: bridge?.pendingHighlight ?? null }));
+    return;
+  }
+  if (url === "/bridge/action" && req.method === "POST") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    try {
+      const action = JSON.parse(await readBody(req)) as UserAction;
+      bridge.reportAction(action);
+      res.writeHead(204);
+      res.end();
+    } catch {
+      res.writeHead(400);
+      res.end();
+    }
+    return;
+  }
+  if (url === "/bridge/highlight" && req.method === "POST") {
+    if (!bridge) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    try {
+      const body = JSON.parse(await readBody(req)) as { selector?: string };
+      bridge.highlight(body.selector ?? "");
+      res.writeHead(204);
+      res.end();
+    } catch {
+      res.writeHead(400);
+      res.end();
+    }
+    return;
+  }
   if (url === "/load" && req.method === "POST") {
     const api = ctx.get("loaderApi", true) as
       | { mount: (file: string) => Promise<unknown> }
@@ -130,9 +208,10 @@ export interface WebConfig {
 
 export const webPlugin = {
   name: "web",
-  provide: ["ui"],
+  provide: ["ui", "pageBridge"],
   async apply(ctx: Context, config: WebConfig = {}): Promise<void> {
     await ctx.plugin(Ui);
+    await ctx.plugin(PageBridge);
   const host = config.host ?? "127.0.0.1";
   const port = config.port ?? 8080;
     const server = http.createServer((req, res) => {
