@@ -13,11 +13,11 @@ Interruptible. **Local commits only** until someone asks to push. After every co
 
 ## Status
 
-- **Last completed step:** 0
-- **Next step:** 1
+- **Last completed step:** 5
+- **Next step:** 6
 - **Branch:** `main`
-- **Last local commit:** `22075a7` Scaffold Fregoli Node + Cordis CLI
-- **Loader config filename:** `fregoli.yml` (not wired yet; step 5)
+- **Last local commit:** `db96ace` Honor saved loader config and --assistant
+- **Loader config filename:** `fregoli.json` (JSON, no extra YAML dependency)
 - **Do not push** to GitHub until asked. Remote may not exist yet.
 
 ## Layout (create as you go)

@@ -19,7 +19,7 @@ export async function boot(options: BootOptions = {}): Promise<Context> {
   const cfg = loadConfig(appRoot);
   const plugins: Array<Plugin | [Plugin, unknown]> = [
     [webPlugin, { port: options.port ?? 8080, host: options.host ?? "127.0.0.1" }],
-    agentPlugin,
+    [agentPlugin, { appRoot }],
   ];
   const wantAssistant = options.forceAssistant || cfg.assistant;
   if (wantAssistant) plugins.push(assistantPlugin);
