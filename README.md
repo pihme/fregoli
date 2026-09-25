@@ -4,6 +4,17 @@ Self-evolving web application on a Cordis kernel, named for Leopoldo Fregoli, th
 
 CLI: `fregoli` (not `freg`). Flag: `fregoli --assistant`.
 
+```bash
+npx tsx src/cli.ts
+# http://127.0.0.1:8080/
+```
+
+Inhabitant image (Hermetarium or any Docker host):
+
+```bash
+docker build -t fregoli:local .
+```
+
 - [SPEC.md](SPEC.md) — product spec
 - [IMPLEMENTATION.md](IMPLEMENTATION.md) — interruptible implementation steps (local commits)
 
