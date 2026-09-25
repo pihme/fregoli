@@ -12,6 +12,7 @@ export interface BootOptions {
   port?: number;
   host?: string;
   forceAssistant?: boolean;
+  acp?: boolean;
 }
 
 export async function boot(options: BootOptions = {}): Promise<Context> {
@@ -20,7 +21,14 @@ export async function boot(options: BootOptions = {}): Promise<Context> {
   const plugins: Array<Plugin | [Plugin, unknown]> = [
     [webPlugin, { port: options.port ?? 8080, host: options.host ?? "127.0.0.1" }],
     loaderPlugin,
-    [agentPlugin, { appRoot }],
+    [
+      agentPlugin,
+      {
+        appRoot,
+        origin: `http://${options.host ?? "127.0.0.1"}:${options.port ?? 8080}`,
+        acp: options.acp,
+      },
+    ],
   ];
   const wantAssistant = options.forceAssistant || cfg.assistant;
   if (wantAssistant) plugins.push(assistantPlugin);

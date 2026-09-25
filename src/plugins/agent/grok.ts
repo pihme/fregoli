@@ -7,14 +7,17 @@ export function whichGrok(): string | null {
   return r.status === 0 && path ? path : null;
 }
 
-export function spawnGrok(ctx: Context, cwd: string): ChildProcess | null {
-  const bin = whichGrok();
-  if (!bin) return null;
-  const child = spawn(
-    bin,
-    ["agent", "--always-approve", "stdio"],
-    { cwd, stdio: ["pipe", "pipe", "pipe"] },
-  );
+export function spawnAcpAgent(
+  ctx: Context,
+  opts: { cwd: string; command?: string; args?: string[] },
+): ChildProcess | null {
+  const command = opts.command ?? whichGrok();
+  if (!command) return null;
+  const args = opts.args ?? ["agent", "--always-approve", "stdio"];
+  const child = spawn(command, args, {
+    cwd: opts.cwd,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
   ctx.effect(() => {
     return () => {
       if (!child.killed) child.kill("SIGTERM");

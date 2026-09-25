@@ -10,7 +10,7 @@ test("whichGrok is a string or null", () => {
 });
 
 test("chat stub when grok is not spawned", async () => {
-  const ctx = await startKernel([agentPlugin]);
+  const ctx = await startKernel([[agentPlugin, { acp: false }]]);
   try {
     const text = await ctx.chat.reply("hi");
     if (!whichGrok()) assert.equal(text, "stub: hi");

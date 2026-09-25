@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { startKernel, stopKernel } from "../src/kernel.ts";
+import { loaderPlugin } from "../src/loader.ts";
 import { agentPlugin } from "../src/plugins/agent/index.ts";
-import { assistantPlugin } from "../src/plugins/assistant/index.ts";
 import { webPlugin } from "../src/plugins/web/index.ts";
+
+const fakeAcp = fileURLToPath(new URL("./fixtures/fake-acp.ts", import.meta.url));
 
 async function freePort(): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -22,12 +25,19 @@ async function freePort(): Promise<number> {
   });
 }
 
-test("POST /chat uses the stub agent", async () => {
+test("POST /chat uses ACP when an agent is spawned", async () => {
   const port = await freePort();
   const ctx = await startKernel([
     [webPlugin, { port, host: "127.0.0.1" }],
-    [agentPlugin, { acp: false }],
-    assistantPlugin,
+    loaderPlugin,
+    [
+      agentPlugin,
+      {
+        acpCommand: process.execPath,
+        acpArgs: ["--import", "tsx", fakeAcp],
+        origin: `http://127.0.0.1:${port}`,
+      },
+    ],
   ]);
   try {
     const res = await fetch(`http://127.0.0.1:${port}/chat`, {
@@ -37,7 +47,7 @@ test("POST /chat uses the stub agent", async () => {
     });
     assert.equal(res.status, 200);
     const data = (await res.json()) as { text: string };
-    assert.equal(data.text, "stub: hello");
+    assert.equal(data.text, "acp:hello");
   } finally {
     await stopKernel(ctx);
   }

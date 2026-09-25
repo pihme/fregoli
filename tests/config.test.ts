@@ -26,7 +26,7 @@ async function freePort(): Promise<number> {
 test("default start includes assistant", async () => {
   const port = await freePort();
   const dir = await mkdtemp(join(tmpdir(), "fregoli-"));
-  const ctx = await boot({ appRoot: dir, port, host: "127.0.0.1" });
+  const ctx = await boot({ appRoot: dir, port, host: "127.0.0.1", acp: false });
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     assert.match(html, /assistant-control/);
@@ -39,7 +39,7 @@ test("saved config can omit assistant", async () => {
   const port = await freePort();
   const dir = await mkdtemp(join(tmpdir(), "fregoli-"));
   await writeFile(join(dir, "fregoli.json"), JSON.stringify({ assistant: false }));
-  const ctx = await boot({ appRoot: dir, port, host: "127.0.0.1" });
+  const ctx = await boot({ appRoot: dir, port, host: "127.0.0.1", acp: false });
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     assert.doesNotMatch(html, /assistant-control/);
@@ -57,6 +57,7 @@ test("--assistant remounts stock assistant", async () => {
     port,
     host: "127.0.0.1",
     forceAssistant: true,
+    acp: false,
   });
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
