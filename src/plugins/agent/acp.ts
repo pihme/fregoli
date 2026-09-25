@@ -113,10 +113,16 @@ export class AcpClient {
       clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
       clientInfo: { name: "fregoli", version: "0.0.0" },
     });
+    const mcpServers = (opts.mcpServers ?? []).map((s) => ({
+      name: s.name,
+      command: s.command,
+      args: s.args ?? [],
+      env: Object.entries(s.env ?? {}).map(([name, value]) => ({ name, value })),
+    }));
     const result = (await this.send("session/new", {
       cwd: opts.cwd,
-      mcpServers: opts.mcpServers ?? [],
-      _meta: { yoloMode: true, rules: FREGOLI_RULES },
+      mcpServers,
+      _meta: { yoloMode: true, systemPromptOverride: FREGOLI_RULES },
     })) as { sessionId?: string };
     this.sessionId = result.sessionId ?? "default";
   }
