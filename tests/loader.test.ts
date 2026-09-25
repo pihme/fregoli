@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { FiberState } from "cordis";
 import { startKernel, stopKernel } from "../src/kernel.ts";
-import { isActive, mountPlugin } from "../src/loader.ts";
+import { isActive, loaderPlugin, mountPlugin } from "../src/loader.ts";
 import { webPlugin } from "../src/plugins/web/index.ts";
 
 const draw = fileURLToPath(new URL("./fixtures/draw.ts", import.meta.url));
@@ -28,7 +28,10 @@ async function freePort(): Promise<number> {
 
 test("mounting a plugin draws on the canvas without restart", async () => {
   const port = await freePort();
-  const ctx = await startKernel([[webPlugin, { port, host: "127.0.0.1" }]]);
+  const ctx = await startKernel([
+    [webPlugin, { port, host: "127.0.0.1" }],
+    loaderPlugin,
+  ]);
   try {
     const before = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     assert.doesNotMatch(before, /hello-canvas/);
@@ -36,6 +39,13 @@ test("mounting a plugin draws on the canvas without restart", async () => {
     assert.equal(isActive(fiber), true);
     const after = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     assert.match(after, /hello-canvas/);
+    const port2 = port;
+    const viaHttp = await fetch(`http://127.0.0.1:${port2}/load`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: draw }),
+    });
+    assert.equal(viaHttp.status, 200);
   } finally {
     await stopKernel(ctx);
   }

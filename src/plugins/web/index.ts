@@ -58,6 +58,32 @@ async function handle(
   res: ServerResponse,
 ): Promise<void> {
   const url = req.url ?? "/";
+  if (url === "/load" && req.method === "POST") {
+    const api = ctx.get("loaderApi", true) as
+      | { mount: (file: string) => Promise<unknown> }
+      | undefined;
+    if (!api) {
+      res.writeHead(503);
+      res.end();
+      return;
+    }
+    let file = "";
+    try {
+      const body = JSON.parse(await readBody(req)) as { file?: string };
+      file = body.file ?? "";
+    } catch {
+      file = "";
+    }
+    try {
+      await api.mount(file);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: String(err) }));
+    }
+    return;
+  }
   if (url === "/chat" && req.method === "POST") {
     const chat = ctx.get("chat", true);
     if (!chat) {
