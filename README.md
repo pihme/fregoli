@@ -5,6 +5,7 @@ Self-evolving web application on a Cordis kernel, named for Leopoldo Fregoli, th
 CLI: `fregoli` (not `freg`). Flag: `fregoli --assistant`.
 
 - [SPEC.md](SPEC.md) — product spec
+- [IMPLEMENTATION.md](IMPLEMENTATION.md) — interruptible implementation steps (local commits)
 
 Running inside [Hermetarium](https://github.com/pihme/hermetarium) is a recommended deployment, not a requirement.
 
