@@ -1,8 +1,5 @@
 #!/usr/bin/env tsx
-import { startKernel } from "./kernel.ts";
-import { agentPlugin } from "./plugins/agent/index.ts";
-import { assistantPlugin } from "./plugins/assistant/index.ts";
-import { webPlugin } from "./plugins/web/index.ts";
+import { boot } from "./boot.ts";
 import { version } from "./version.ts";
 
 export function parseArgs(argv: string[]): {
@@ -32,11 +29,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     process.stdout.write(version + "\n");
     return 0;
   }
-  const ctx = await startKernel([
-    [webPlugin, { port: 8080 }],
-    agentPlugin,
-    assistantPlugin,
-  ]);
+  const ctx = await boot({ forceAssistant: args.assistant });
   await new Promise<void>((resolve) => {
     const stop = () => {
       ctx.fiber.dispose().finally(() => resolve());
