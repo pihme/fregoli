@@ -1,6 +1,9 @@
 # Fregoli
 
-[![CI](https://github.com/pihme/fregoli/actions/workflows/ci.yml/badge.svg)](https://github.com/pihme/fregoli/actions/workflows/ci.yml)
+[![CI](https://github.com/pihme/fregoli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pihme/fregoli/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/pihme/fregoli?filter=fregoli%2F*&label=release)](https://github.com/pihme/fregoli/releases?q=fregoli)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE)
+[![Website](https://img.shields.io/badge/website-pihme.github.io%2Ffregoli-9a3b28)](https://pihme.github.io/fregoli/)
 
 Fregoli is a web application an agent can rewrite *while it is running*. Instead of editing files and restarting the process, capabilities are [Cordis](https://github.com/cordiverse/cordis) plugins that are mounted and unmounted in a live Node process. The name comes from [Leopoldo Fregoli](https://en.wikipedia.org/wiki/Leopoldo_Fregoli) (1867–1936), the quick-change artist: one performer, many appearances, no restart of the show.
 
