@@ -1,0 +1,56 @@
+name: Bug report
+description: Something in Fregoli does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Please check the open issues first; the website's Current status lists known gaps.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `npx tsx src/cli.ts --version`, or the release tag / commit you run.
+      placeholder: fregoli/v0.3.1 or commit abc1234
+    validations:
+      required: true
+  - type: dropdown
+    id: run
+    attributes:
+      label: How do you run it?
+      options:
+        - From source (npx tsx src/cli.ts)
+        - Docker image
+        - Inside Hermetarium
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. npm ci
+        2. npx tsx src/cli.ts
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error output or logs if you have them.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Node version, whether the Grok CLI is on PATH (and its version), browser.
+      placeholder: macOS 15, Node 22.x, grok 1.x, Firefox

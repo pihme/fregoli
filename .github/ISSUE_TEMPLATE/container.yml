@@ -1,0 +1,51 @@
+name: Container / Hermetarium
+description: Problems with the Docker image or with running Fregoli as a Hermetarium inhabitant.
+labels: ["container"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag or commit the image was built from.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it run?
+      options:
+        - docker run
+        - Hermetarium, weak wall
+        - Hermetarium, strong wall
+        - Other container runtime
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Build and run commands
+      render: shell
+      placeholder: |
+        docker build -t fregoli:local .
+        docker run --rm -p 8080:8080 fregoli:local
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Container logs, HTTP responses, `hermetarium logs` output.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Host OS and architecture, Docker version, Hermetarium version if used.
