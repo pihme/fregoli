@@ -40,7 +40,7 @@ Saved config is `fregoli.json` in the process cwd (app root):
 
 `plugins` is extra files to mount (typically under `plugins/runtime/`).
 
-`assistant: false` omits the stock chat UI on the next start. `fregoli --assistant` puts it back for that process only.
+`assistant: false` omits the stock chat UI on the next start. Starting with `--assistant` puts it back for that process only.
 
 ## HTTP
 
@@ -73,5 +73,7 @@ When `grok` is on `PATH`, Fregoli speaks ACP and starts Grok with an MCP server 
 docker build -t fregoli:local .
 docker run --rm -p 8080:8080 fregoli:local
 ```
+
+Note: the server currently listens on `127.0.0.1` inside the container, so the published port is likely unreachable from the host ([#1](https://github.com/pihme/fregoli/issues/1)).
 
 [Hermetarium](https://github.com/pihme/hermetarium) is a recommended habitat (image listens on 8080). It is not required.

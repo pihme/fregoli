@@ -9,7 +9,7 @@ A self-evolving web application on a Cordis kernel. Status: first slice implemen
 - Binary and CLI: `fregoli` in full. Do not shorten to `freg`.
 - Nearby term we are not: **Fregoli delusion** (a psychiatric syndrome, 1927, also named after the actor). Not a shipping CLI.
 - Nearby systems we are not: DeepSeek Harness (`dsh`), Koishi, the Grok TUI.
-- License: **PolyForm Noncommercial 1.0.0**. Source-available, not OSI Open Source. See [LICENSE](LICENSE).
+- License: **PolyForm Noncommercial 1.0.0**. Source-available, not OSI Open Source. See [license](LICENSE).
 
 ## 2. Problem
 
