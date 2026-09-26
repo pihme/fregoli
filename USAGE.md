@@ -17,7 +17,7 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 
 | Piece | Role |
 | --- | --- |
-| Web plugin | HTTP on **8080**, blank canvas, page bridge |
+| Web plugin | HTTP on **8080**, canvas (welcome canvas from `plugins/shipped/welcome.ts` at boot), page bridge |
 | Agent plugin | Spawns `grok agent --always-approve stdio` (ACP). Stub if `grok` is missing. |
 | Assistant plugin | Lower-right chat. Replaceable and removable. |
 | Loader | `POST /load` mounts a Cordis plugin file |
