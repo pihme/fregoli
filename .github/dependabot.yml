@@ -1,3 +1,6 @@
+# Commit prefixes follow the release rules in CONTRIBUTING.md (.github/scripts/release.py):
+#   runtime deps and the Docker base image -> fix(deps): patch release
+#   dev deps -> chore(deps-dev), GitHub Actions -> ci(deps): no release
 version: 2
 updates:
   - package-ecosystem: npm
@@ -8,10 +11,15 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies]
     commit-message:
-      prefix: chore
+      prefix: fix
+      prefix-development: chore
       include: scope
     groups:
       npm-minor-and-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+      npm-dev-minor-and-patch:
+        dependency-type: development
         update-types: [minor, patch]
 
   - package-ecosystem: github-actions
@@ -36,7 +44,7 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies]
     commit-message:
-      prefix: chore
+      prefix: fix
       include: scope
     groups:
       docker-minor-and-patch:
