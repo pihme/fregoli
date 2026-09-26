@@ -1,4 +1,4 @@
-# Commit prefixes follow the release rules in CONTRIBUTING.md (.github/scripts/release.py):
+# Commit prefixes follow the release rules in AGENTS.md (.github/scripts/release.py):
 #   runtime deps and the Docker base image -> fix(deps): patch release
 #   dev deps -> chore(deps-dev), GitHub Actions -> ci(deps): no release
 version: 2

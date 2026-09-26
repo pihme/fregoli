@@ -14,7 +14,7 @@ The CLI name is `fregoli` in full; do not shorten to `freg`.
 - [Website](https://pihme.github.io/fregoli/) — handbook and current status
 - [Specification](SPEC.md) — product spec
 - [Usage guide](USAGE.md) — CLI, HTTP, Grok, Docker
-- [Contributing](CONTRIBUTING.md) — tests, commits, versions; issues welcome, outside pull requests not accepted for now
+- [Contributing](CONTRIBUTING.md) — issues welcome, outside pull requests not accepted for now
 
 ## Getting started
 

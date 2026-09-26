@@ -17,7 +17,10 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 - HTTP handlers must use `ctx.get(name, true)` for services; `ctx.ui` off-fiber throws without inject.
 - Grok is the agent: `grok agent --always-approve stdio`. MCP tools in `src/mcp.ts` (`list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`, `reload_page`). After `load_plugin`, Grok should `reload_page`; the assistant panel and chat history persist in sessionStorage. Skill: `.grok/skills/fregoli-app`.
 - Page snapshot is the serialized DOM of this origin. No WASM. Scanner is outside this process.
-- **Versions:** tag `fregoli/vX.Y.Z`. Conventional commits (`feat:` minor, `fix:`/`perf:` patch, `feat!:` or `BREAKING CHANGE:` major). Bump only when the commit touches `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `Dockerfile`, or `Makefile`. `.github/scripts/release.py` on push to `main` after CI.
+- **Versions:** one artifact, tag `fregoli/vX.Y.Z`. [Conventional Commits](https://www.conventionalcommits.org/): `feat:` minor, `fix:`/`perf:` patch, `feat!:`/`fix!:` or a `BREAKING CHANGE:` footer major; `docs:`, `test:`, `chore:`, `ci:` do not bump. A commit only bumps when it touches `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `Dockerfile`, or `Makefile`. After CI on a push to `main`, `.github/scripts/release.py` creates the GitHub Release and attaches `fregoli-src.tar.gz`.
+- **Dependabot** (`.github/dependabot.yml`): runtime deps and the Docker base image `fix(deps):` (patch release), dev deps `chore(deps-dev):`, GitHub Actions `ci(deps):`. Merge its PRs only with green CI.
+- **Changes on main:** keep them small; `npm test` should pass on Node 22. Do not call the xAI HTTP API as the agent (use Grok CLI / ACP). Do not add WASM inner plugins or an in-process scanner.
+- Outside pull requests are not accepted (see `CONTRIBUTING.md`); issues are.
 - [Hermetarium](https://github.com/pihme/hermetarium) is a recommended deployment, not required. Image listens on 8080.
 - Prefer small, reversible files. `npm test` is the merge gate.
 
