@@ -4,6 +4,7 @@ CLI is `fregoli` in full, never `freg`. From this tree:
 
 ```bash
 npm ci
+npx tsx src/cli.ts --help
 npx tsx src/cli.ts --version
 npx tsx src/cli.ts              # http://127.0.0.1:8080/
 npx tsx src/cli.ts --assistant  # force the stock assistant UI

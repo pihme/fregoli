@@ -53,7 +53,7 @@ There is no in-process sandbox API for tools. The agent uses ordinary processes 
 | Kernel | Cordis runtime in this Node process: load, unload, inject, provide, revertible effects. |
 | Plugin | A Cordis plugin: `inject` / `provide` / `apply(ctx)`. Unload runs inverses. |
 | Boot plugins | Web, agent, and assistant, mounted when the process starts. Assistant may later be omitted. |
-| Canvas | The main visible surface of the web app. Empty at boot. Other plugins may fill it. |
+| Canvas | The main visible surface of the web app. Shows the welcome canvas (`plugins/shipped/welcome.ts`) at boot. Other plugins may replace it. |
 | Assistant | Lower-right control and the chat UI it opens. A Cordis plugin. Talks to the agent plugin in-process. Replaceable and removable. |
 | Skill | Grok skill: a directory with `SKILL.md` (YAML frontmatter + markdown). Instruction pack, not a Cordis plugin. |
 | MCP server | A process that speaks Model Context Protocol. **Grok CLI** is the client. Config lives in Grok’s TOML. |
@@ -93,7 +93,7 @@ The kernel has no product features. Web UI and the Grok-CLI bridge are plugins. 
 
 Provides HTTP on 8080 and the first UI.
 
-**Canvas.** Full remaining viewport, empty. No demo widgets. This is the surface later UI plugins render into (a `ui` service or equivalent that the web plugin hosts). A slot for the assistant control is part of that host, not the assistant itself.
+**Canvas.** Full remaining viewport. At boot it shows the welcome canvas from `plugins/shipped/welcome.ts`; no other demo widgets. This is the surface later UI plugins render into (a `ui` service or equivalent that the web plugin hosts). A slot for the assistant control is part of that host, not the assistant itself.
 
 If the web plugin unloads, 8080 closes. The agent must not unload it without a replacement that `provide`s the same HTTP/UI keys, or the operator loses the HTTP server. The loader’s inject graph is what enforces that, not a special case in the kernel.
 
@@ -128,7 +128,7 @@ A first-slice stub is allowed only if the `grok` binary is missing. When `grok` 
 
 ### 8c. Assistant
 
-The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a control in the **lower right** that opens a panel to talk to the agent (send, replies, working state). Chat is in-process (assistant → agent plugin → Grok ACP). Outbound network is Grok calling the model or a remote tool. The page-bridge WebSocket is local, not that outbound path.
+The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a control in the **lower right** that opens a panel to talk to the agent (send, replies, working state). Chat is in-process (assistant → agent plugin → Grok ACP). Outbound network is Grok calling the model or a remote tool. The page bridge is local HTTP between the tab and this process, not that outbound path.
 
 It is **replaceable**: another plugin may `provide` the same key (new layout, new copy, no button, a menu item, …).
 
@@ -138,7 +138,7 @@ Saved loader config may omit assistant. Then a normal start has no assistant UI.
 
 **`fregoli --assistant`** at process start mounts the **stock** assistant as the provider of `assistantUi`. Saved config that omitted assistant, or that named a replacement, is ignored for that key on this start. Use this to get the original chat UI back after the app was “finished.” The flag is start-time only; a later unload in that session is still allowed.
 
-Loader config (which extra plugins to mount besides the default first-start set) lives under the app root. Exact filename is an implementation choice (Cordis config).
+Loader config (which extra plugins to mount besides the default first-start set) lives under the app root in `fregoli.json` (`assistant`, `plugins`).
 
 ### 8d. Page bridge
 
@@ -182,7 +182,7 @@ The session log is required. A wall-side I/O log is a property of the deployment
 
 If deployed in [Hermetarium](https://github.com/pihme/hermetarium): `create --image … --acl …`, open `hermetarium url`, `destroy` drops the wall. This app must tolerate ephemeral filesystems.
 
-## 12. First slice (when we implement)
+## 12. First slice
 
 Specified so a later hello-world has a bar. Implemented (see status above).
 
@@ -192,7 +192,7 @@ Specified so a later hello-world has a bar. Implemented (see status above).
 4. Agent (or a test stand-in) mounts a plugin that draws on the canvas; reload without restarting Node.
 5. A deliberately broken plugin file does not become `ACTIVE` and does not replace the canvas.
 
-[Hermetarium](https://github.com/pihme/hermetarium) is not part of that bar. Later slices: inhabitant image; page bridge (observe DOM + user click back to Grok).
+[Hermetarium](https://github.com/pihme/hermetarium) is not part of that bar. Added since the first slice: the page bridge (observe DOM + user click back to Grok) and a container image.
 
 ## 13. Open questions
 
