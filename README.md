@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/pihme/fregoli/actions/workflows/ci.yml/badge.svg)](https://github.com/pihme/fregoli/actions/workflows/ci.yml)
 
-Self-evolving web application on a Cordis kernel, named for Leopoldo Fregoli, the quick-change artist. One process, many appearances: plugins load and unload without restarting Node.
+Fregoli is a web application an agent can rewrite *while it is running*. Instead of editing files and restarting the process, capabilities are [Cordis](https://github.com/cordiverse/cordis) plugins that are mounted and unmounted in a live Node process. The name comes from [Leopoldo Fregoli](https://en.wikipedia.org/wiki/Leopoldo_Fregoli) (1867–1936), the quick-change artist: one performer, many appearances, no restart of the show.
+
+On start you get a canvas on port 8080 and an assistant chat in the lower right. Chat goes to the **Grok CLI** over ACP when `grok` is on `PATH`, otherwise to an in-process stub. Grok receives an MCP server that lets it observe the page, load and unload plugins, highlight elements and wait for the user to click.
 
 The CLI name is `fregoli` in full; do not shorten to `freg`.
 
