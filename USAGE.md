@@ -11,7 +11,7 @@ npx tsx src/cli.ts --assistant  # force the stock assistant UI
 
 Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, chat is an in-process stub.
 
-`--version` is `dev` on a dirty/untagged tree, or the `fregoli/vX.Y.Z` tag (see `FREGOLI_VERSION` / `make build`).
+`--version` is `dev` on a dirty/untagged tree, or the `fregoli/vX.Y.Z` tag (set `FREGOLI_VERSION` to override; `make build` only prints the version derived from `git describe`).
 
 ## What you get
 

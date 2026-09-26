@@ -20,7 +20,7 @@ npx tsx src/cli.ts
 # http://127.0.0.1:8080/
 ```
 
-Blank canvas, assistant in the lower right. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. `fregoli --assistant` forces the stock assistant UI.
+A welcome canvas (`plugins/shipped/welcome.ts`) is shown at boot, assistant in the lower right. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. `fregoli --assistant` forces the stock assistant UI.
 
 `fregoli/vX.Y.Z` GitHub Releases attach a source tarball. Local `--version` is `dev` unless `FREGOLI_VERSION` is set.
 
@@ -30,7 +30,7 @@ The **kernel** is Cordis. Capabilities are plugins.
 
 **Web** serves HTTP on 8080, the canvas, and the page bridge (DOM snapshot, highlight, user click).
 
-**Agent** spawns `grok agent --always-approve stdio` and speaks ACP. It hands Grok an MCP server (`observe_page`, `load_plugin`, `highlight`, `wait_click`). Unload kills that child.
+**Agent** spawns `grok agent --always-approve stdio` and speaks ACP. It hands Grok an MCP server: `list_plugins` (mounted Cordis fibers), `load_plugin` (mount a plugin file), `unload_plugin` (dispose a fiber by name), `observe_page` (serialized DOM of the current tab), `highlight` (highlight a CSS selector), `wait_click` (highlight a selector and wait for the user to click or type), `reload_page` (reload the browser tab; assistant chat stays open). Unload kills that child.
 
 **Assistant** is its own plugin: lower-right chat, replaceable and removable.
 

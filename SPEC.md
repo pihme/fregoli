@@ -21,7 +21,7 @@ The paper name for the product shape is a **self-evolving agent harness**: the a
 
 A **Cordis kernel** (the TypeScript meta-framework, not a from-scratch calculus and not a wrap of DeepSeek Harness). Capabilities are plugins. On a default first start, three plugins are mounted:
 
-1. **Web** — HTTP server on TCP 8080 and the blank canvas.
+1. **Web** — HTTP server on TCP 8080 and the canvas (a welcome canvas from `plugins/shipped/welcome.ts` is shown at boot).
 2. **Agent** — Cordis plugin that runs **Grok CLI** (ACP). Grok is the coding agent (shell, skills, MCP). The plugin is not the kernel.
 3. **Assistant** — lower-right control and chat panel. A boot plugin, not welded to web. Replaceable and removable (§8c).
 
@@ -175,7 +175,7 @@ The session log is required. A wall-side I/O log is a property of the deployment
 ## 11. Lifecycle
 
 1. Start `fregoli` with the boot plugins (directly, or as a container `CMD`). Pass `--assistant` to force the stock assistant UI.
-2. Open `http://<host>:8080`. Canvas is blank. Assistant is in the lower right unless it was omitted from the saved graph and `--assistant` was not passed.
+2. Open `http://<host>:8080`. A welcome canvas (`plugins/shipped/welcome.ts`) is shown. Assistant is in the lower right unless it was omitted from the saved graph and `--assistant` was not passed.
 3. Operator talks to the agent. The agent may install tools, write plugins/skills/MCP servers, and mount them.
 4. The canvas and routes update when new fibers become `ACTIVE`.
 5. Stop the process. In-process state is gone. Files on disk remain if the deployment keeps the filesystem.
@@ -184,10 +184,10 @@ If deployed in Hermetarium: `create --image … --acl …`, open `hermetarium ur
 
 ## 12. First slice (when we implement)
 
-Specified so a later hello-world has a bar. Not implemented yet.
+Specified so a later hello-world has a bar. Implemented (see status above).
 
 1. Kernel boots; web, agent, and stock assistant fibers `ACTIVE`.
-2. GET `/` shows blank canvas + lower-right assistant.
+2. GET `/` shows the canvas (welcome canvas at boot) + lower-right assistant.
 3. Assistant chat reaches the agent. Stub only if `grok` is not on `PATH`; otherwise Grok CLI over ACP.
 4. Agent (or a test stand-in) mounts a plugin that draws on the canvas; reload without restarting Node.
 5. A deliberately broken plugin file does not become `ACTIVE` and does not replace the canvas.
