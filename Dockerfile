@@ -1,3 +1,4 @@
+# Base image: node:26-alpine, kept current by Dependabot. The app itself needs Node 22+ (package.json engines).
 FROM node:26-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
