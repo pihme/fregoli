@@ -18,7 +18,7 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 - Grok is the agent: `grok agent --always-approve stdio`. MCP tools in `src/mcp.ts` (`list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`, `reload_page`). After `load_plugin`, Grok should `reload_page`; the assistant panel and chat history persist in sessionStorage. Skill: `.grok/skills/fregoli-app`.
 - Page snapshot is the serialized DOM of this origin. No WASM. Scanner is outside this process.
 - **Versions:** tag `fregoli/vX.Y.Z`. Conventional commits (`feat:` minor, `fix:`/`perf:` patch, `feat!:` or `BREAKING CHANGE:` major). Bump only when the commit touches `src/`, `package.json`, `package-lock.json`, `tsconfig.json`, `Dockerfile`, or `Makefile`. `.github/scripts/release.py` on push to `main` after CI.
-- Hermetarium is a recommended deployment, not required. Image listens on 8080.
+- [Hermetarium](https://github.com/pihme/hermetarium) is a recommended deployment, not required. Image listens on 8080.
 - Prefer small, reversible files. `npm test` is the merge gate.
 
 ## Do not invent

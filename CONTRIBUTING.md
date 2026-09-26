@@ -4,7 +4,7 @@ Source-available under [PolyForm Noncommercial 1.0.0](LICENSE). Other licenses c
 
 ## Run tests
 
-Needs Node 22+. Docker is optional (inhabitant image test is skipped without it).
+Needs Node 22+. Docker is optional ([inhabitant image](https://github.com/pihme/hermetarium) test is skipped without it).
 
 ```bash
 npm ci

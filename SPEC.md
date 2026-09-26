@@ -72,7 +72,7 @@ This process is a Node program that listens on **8080**. It can run on a develop
 - Outbound model APIs and package downloads use that logged path. Keys stay in the host ACL, not in the image.
 - The agent may use the image’s Linux (`apt-get`, a compiler, …). That is habitat freedom, not the normal way to add app features. App features are written as Cordis plugins (D30).
 
-Hermetarium is **not required**. A laptop `node` process is a valid deployment. Without a habitat there is no wall-side I/O log and no fail-closed network; that is accepted for that deployment, not a defect of this spec.
+[Hermetarium](https://github.com/pihme/hermetarium) is **not required**. A laptop `node` process is a valid deployment. Without a habitat there is no wall-side I/O log and no fail-closed network; that is accepted for that deployment, not a defect of this spec.
 
 **Cordis effects wrap only processes the agent plugin itself starts:** the Grok CLI child, and the page-bridge MCP server the plugin offers to Grok. Inverse = kill that child. Grok’s descendants (shell, `npm`, MCP servers listed in Grok’s TOML) are Grok’s. Unload of the agent plugin kills Grok, which should take its children with it. Files and packages on disk remain.
 
@@ -168,7 +168,7 @@ The agent improving the app is **load/unload of plugins**, not rewrite-a-monolit
 | Log | Where | What |
 | --- | --- | --- |
 | Session log | Grok’s session files | Prompts and tool calls the model saw. The assistant UI may stream the live ACP transcript. |
-| Network I/O log | Optional, outside this process | Packets that leave the machine or habitat, if the deployment provides one (Hermetarium does) |
+| Network I/O log | Optional, outside this process | Packets that leave the machine or habitat, if the deployment provides one ([Hermetarium](https://github.com/pihme/hermetarium) does) |
 
 The session log is required. A wall-side I/O log is a property of the deployment, not of the kernel.
 
@@ -180,7 +180,7 @@ The session log is required. A wall-side I/O log is a property of the deployment
 4. The canvas and routes update when new fibers become `ACTIVE`.
 5. Stop the process. In-process state is gone. Files on disk remain if the deployment keeps the filesystem.
 
-If deployed in Hermetarium: `create --image … --acl …`, open `hermetarium url`, `destroy` drops the wall. This app must tolerate ephemeral filesystems.
+If deployed in [Hermetarium](https://github.com/pihme/hermetarium): `create --image … --acl …`, open `hermetarium url`, `destroy` drops the wall. This app must tolerate ephemeral filesystems.
 
 ## 12. First slice (when we implement)
 
@@ -192,7 +192,7 @@ Specified so a later hello-world has a bar. Implemented (see status above).
 4. Agent (or a test stand-in) mounts a plugin that draws on the canvas; reload without restarting Node.
 5. A deliberately broken plugin file does not become `ACTIVE` and does not replace the canvas.
 
-Hermetarium is not part of that bar. Later slices: inhabitant image; page bridge (observe DOM + user click back to Grok).
+[Hermetarium](https://github.com/pihme/hermetarium) is not part of that bar. Later slices: inhabitant image; page bridge (observe DOM + user click back to Grok).
 
 ## 13. Open questions
 
