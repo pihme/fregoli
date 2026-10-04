@@ -16,6 +16,14 @@ The CLI name is `fregoli` in full; do not shorten to `freg`.
 - [Usage guide](USAGE.md) — CLI, HTTP, Grok, Docker
 - [Contributing](CONTRIBUTING.md) — issues welcome, outside pull requests not accepted for now
 
+## The three questions
+
+Fregoli is built around three questions:
+
+1. What if you no longer have to buy software off the shelf, but can build it yourself?
+2. What if software is not delivered fully baked, but can change constantly?
+3. What if AI does not just build the software, but can then also take on tasks inside that software that deterministic software cannot do?
+
 ## Getting started
 
 Needs Node 22+. For a real agent, the Grok CLI on `PATH` (authenticated via Grok CLI login or `XAI_API_KEY`).
