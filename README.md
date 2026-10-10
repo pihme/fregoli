@@ -92,4 +92,16 @@ The **kernel** is Cordis. Capabilities are plugins ("fibers") that can be mounte
 | `tests/` | `node:test` suites run via `tsx` |
 | `docs/images/` | Diagrams used in this README and on the website |
 
-License: [PolyForm Noncommercial 1.0.0](LICENSE). Source-available, not OSI Open Source.
+## How this project is built
+
+Fregoli is developed agent-first. AI coding agents write all code,
+tests, and documentation, and review each other's changes, under human
+direction: specs, design decisions, and acceptance based on observed
+behaviour and test results. No human reads the code line by line. This
+is a deliberate choice. Quality rests on automated tests, CI, and
+independent agent review.
+
+Evaluate the code against your own requirements before you depend on it.
+Found a problem? Open an issue.
+
+License: [PolyForm Noncommercial 1.0.0](LICENSE). Source-available, not OSI Open Source. Third-party software and its licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
