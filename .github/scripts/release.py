@@ -41,7 +41,7 @@ COMPONENTS = [
         "build": [
             "bash",
             "-c",
-            "mkdir -p dist && git archive --format=tar.gz --prefix=fregoli/ -o dist/fregoli-src.tar.gz HEAD",
+            "mkdir -p dist/stage && rm -rf dist/stage/fregoli && git archive --format=tar --prefix=fregoli/ HEAD | tar -x -C dist/stage && printf '%s\n' 'fregoli/v{ver}' > dist/stage/fregoli/src/RELEASE_VERSION && tar -C dist/stage -czf dist/fregoli-src.tar.gz fregoli",
         ],
     },
 ]

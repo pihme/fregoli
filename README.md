@@ -35,9 +35,10 @@ npm ci
 npx tsx src/cli.ts              # http://127.0.0.1:8080/
 npx tsx src/cli.ts --assistant  # force the stock assistant UI
 npx tsx src/cli.ts --version
+npm link                        # puts `fregoli` on PATH; uses the tsx in this checkout
 ```
 
-A welcome canvas (`plugins/shipped/welcome.ts`) is shown at boot, assistant in the lower right. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. Starting with `--assistant` forces the stock assistant UI for that start.
+A welcome canvas (`plugins/shipped/welcome.ts`) is shown at boot. The assistant in the lower right is a [Helferlein](https://github.com/pihme/helferlein) figure (v0.1.2): resting, it opens the chat; while the chat is open it floats above the panel. A change the agent applies rolls a new look, and the browser remembers it. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. Starting with `--assistant` forces the stock assistant UI for that start. `npm link` is what makes the `fregoli` command exist. It does not need a global `tsx`.
 
 Run the tests (the merge gate):
 
@@ -48,19 +49,19 @@ npm test
 Container image ([Hermetarium](https://github.com/pihme/hermetarium) is a recommended habitat, not a requirement):
 
 ```bash
-docker build -t fregoli:local .
+docker build -t fregoli:local --build-arg FREGOLI_VERSION="$(git describe --tags --match 'fregoli/v*' 2>/dev/null || echo dev)" .
 docker run --rm -p 8080:8080 fregoli:local
 ```
 
-Note: the server currently listens on `127.0.0.1` inside the container, so the published port is likely unreachable from the host ([#1](https://github.com/pihme/fregoli/issues/1)).
+The image listens on `0.0.0.0:8080`, includes `plugins/shipped/`, `fregoli.json`, and `.grok/skills/fregoli-app/`, and installs `iproute2` and `iptables` for a Hermetarium wall. A local process still listens on `127.0.0.1` unless you pass `--host` or set `FREGOLI_HOST`.
 
-Saved config lives in `fregoli.json` in the process working directory:
+Saved config lives in `fregoli.json` in the process working directory. Load and unload write it, so a runtime plugin and a removed assistant survive a restart:
 
 ```json
 { "assistant": true, "plugins": [] }
 ```
 
-`fregoli/vX.Y.Z` GitHub Releases attach a source tarball. Local `--version` is `dev` unless `FREGOLI_VERSION` is set. Full CLI and HTTP reference: [usage guide](USAGE.md).
+`fregoli/vX.Y.Z` GitHub Releases attach a source tarball stamped with that version. `--version` prints `FREGOLI_VERSION` if set, otherwise `git describe --tags --match 'fregoli/v*'`, otherwise `dev`. Full CLI and HTTP reference: [usage guide](USAGE.md).
 
 ## Architecture
 
@@ -74,9 +75,9 @@ The **kernel** is Cordis. Capabilities are plugins ("fibers") that can be mounte
 
 **Agent** spawns `grok agent --always-approve stdio` and speaks ACP. It hands Grok an MCP server: `list_plugins` (mounted Cordis fibers), `load_plugin` (mount a plugin file), `unload_plugin` (dispose a fiber by name), `observe_page` (serialized DOM of the current tab), `highlight` (highlight a CSS selector), `wait_click` (highlight a selector and wait for the user to click or type), `reload_page` (reload the browser tab; assistant chat stays open). Without `grok` it falls back to a stub. Unload kills that child.
 
-**Assistant** is its own plugin: lower-right chat, replaceable and removable.
+**Assistant** is its own plugin: lower-right chat, replaceable and removable. The stock UI is the Helferlein avatar described above.
 
-**Loader** mounts extra Cordis plugins from `fregoli.json` or `POST /load`. A failed `apply` does not become `ACTIVE` and does not replace the canvas.
+**Loader** mounts extra Cordis plugins from `fregoli.json` or `POST /load`, and writes `fregoli.json` when a plugin is loaded or unloaded. A failed `apply` does not become `ACTIVE` and does not replace the canvas.
 
 ## Layout
 

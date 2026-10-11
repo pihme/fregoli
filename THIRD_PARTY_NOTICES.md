@@ -21,6 +21,12 @@ Fregoli is distributed as source (`fregoli-src.tar.gz` on each GitHub Release) a
 
 **Base image.** The Dockerfile builds on `node:26-alpine`, which contains Node.js, npm and Alpine Linux packages, each under its own license. This project doesn't publish an image; if you distribute one, its obligations are yours.
 
+## Vendored in the source tree
+
+### Helferlein 0.1.2
+
+PolyForm Noncommercial 1.0.0. The stock assistant serves `src/plugins/assistant/vendor/helferlein.min.js` at `/helferlein.min.js`. Its license is `src/plugins/assistant/vendor/LICENSE`. That minified build bundles parts of three.js (MIT); the notices are in `src/plugins/assistant/vendor/THIRD_PARTY_NOTICES.md`, and the script's header comment names the three.js version.
+
 ## License texts
 
 As shipped in each package (license file from the installed package; where a package ships none, its `package.json` license field is given).

@@ -64,7 +64,7 @@ There is no in-process sandbox API for tools. The agent uses ordinary processes 
 
 ## 6. Deployment
 
-This process is a Node program that listens on **8080**. It can run on a developer machine, in an ordinary container, or behind any reverse proxy.
+This process is a Node program that listens on **8080**. The listen address is `127.0.0.1` unless `--host` or `FREGOLI_HOST` is set. The container image sets `FREGOLI_HOST=0.0.0.0`. The page-bridge MCP server calls this process on `127.0.0.1` and the same port. It can run on a developer machine, in an ordinary container, or behind any reverse proxy.
 
 **Recommended:** run it as an inhabitant of **Hermetarium** (https://github.com/pihme/hermetarium): OCI image, weak `runc` or strong Firecracker wall, Squid as the only network path, I/O log on the wall. Then:
 
@@ -74,7 +74,7 @@ This process is a Node program that listens on **8080**. It can run on a develop
 
 [Hermetarium](https://github.com/pihme/hermetarium) is **not required**. A laptop `node` process is a valid deployment. Without a habitat there is no wall-side I/O log and no fail-closed network; that is accepted for that deployment, not a defect of this spec.
 
-**Cordis effects wrap only processes the agent plugin itself starts:** the Grok CLI child, and the page-bridge MCP server the plugin offers to Grok. Inverse = kill that child. Grok’s descendants (shell, `npm`, MCP servers listed in Grok’s TOML) are Grok’s. Unload of the agent plugin kills Grok, which should take its children with it. Files and packages on disk remain.
+**Cordis effects wrap the process the agent plugin itself starts:** the Grok CLI child. The plugin passes the page-bridge MCP server spec (`src/mcp.ts`, `FREGOLI_URL`) in ACP `session/new`, and Grok spawns that process. The inverse kills the Grok child, which takes the MCP server with it. Grok’s other descendants (shell, `npm`, MCP servers listed in Grok’s TOML) are Grok’s. Files and packages on disk remain.
 
 ## 7. Kernel
 
@@ -128,7 +128,7 @@ A first-slice stub is allowed only if the `grok` binary is missing. When `grok` 
 
 ### 8c. Assistant
 
-The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a control in the **lower right** that opens a panel to talk to the agent (send, replies, working state). Chat is in-process (assistant → agent plugin → Grok ACP). Outbound network is Grok calling the model or a remote tool. The page bridge is local HTTP between the tab and this process, not that outbound path.
+The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a [Helferlein](https://github.com/pihme/helferlein) figure in the **lower right** (pinned build `helferlein.min.js` v0.1.2, served at `/helferlein.min.js`). Resting, the figure is the button that opens the panel. While the panel is open the figure floats above it. The page calls `summon` when the panel opens, `working` while a reply is in flight, `idle` when the reply did not change the mounted plugins, `applied` when a load, unload, or reload landed, and `dismiss` when the panel closes. The browser keeps the figure’s look in `localStorage`. Reduced motion and the no-WebGL fallback belong to Helferlein. Chat is in-process (assistant → agent plugin → Grok ACP). Outbound network is Grok calling the model or a remote tool. The page bridge is local HTTP between the tab and this process, not that outbound path.
 
 It is **replaceable**: another plugin may `provide` the same key (new layout, new copy, no button, a menu item, …).
 
@@ -138,13 +138,13 @@ Saved loader config may omit assistant. Then a normal start has no assistant UI.
 
 **`fregoli --assistant`** at process start mounts the **stock** assistant as the provider of `assistantUi`. Saved config that omitted assistant, or that named a replacement, is ignored for that key on this start. Use this to get the original chat UI back after the app was “finished.” The flag is start-time only; a later unload in that session is still allowed.
 
-Loader config (which extra plugins to mount besides the default first-start set) lives under the app root in `fregoli.json` (`assistant`, `plugins`).
+Loader config (which extra plugins to mount besides the default first-start set) lives under the app root in `fregoli.json` (`assistant`, `plugins`). `POST /load` and `POST /unload` write that file: a runtime plugin is added to `plugins` when it mounts and removed when it unloads, and unloading the assistant sets `assistant` to false. Files under `plugins/shipped/` mount on every start and are not listed in the file.
 
 ### 8d. Page bridge
 
 Grok does not run in the browser. The operator’s tab is a different process. The agent must still **see what the user sees** on this app’s page (canvas and, if mounted, assistant), not only the source files on disk.
 
-**Observe.** A live connection from the browser to the web plugin (WebSocket or equivalent) carries a snapshot of the **current document**: the **serialized DOM** of this origin (the app root), plus selected metadata (URL, viewport, focused element). That is the required shape. An accessibility tree or a screenshot may be added later; they are not required. Not other browser tabs, not cross-origin iframes we do not control. The agent plugin exposes this to Grok as tools. DOM capture and click handling stay **in the Fregoli Node process**. Grok is only the MCP **client** (D33): the agent plugin starts that server (stdio or a loopback port) before Grok, as a Cordis effect (D32). If no browser is connected, observe returns an error, not an empty fake page. If several tabs are connected, the snapshot is the **most recently focused** connected tab.
+**Observe.** A live connection from the browser to the web plugin (WebSocket or equivalent) carries a snapshot of the **current document**: the **serialized DOM** of this origin (the app root), plus selected metadata (URL, viewport, focused element). That is the required shape. An accessibility tree or a screenshot may be added later; they are not required. Not other browser tabs, not cross-origin iframes we do not control. The agent plugin exposes this to Grok as tools. DOM capture and click handling stay **in the Fregoli Node process**. Grok is only the MCP **client** (D33): the agent plugin hands Grok the server spec in ACP `session/new`, and Grok spawns `src/mcp.ts`. Unloading the agent kills Grok, which takes that server with it. If no browser is connected, observe returns an error, not an empty fake page. If several tabs are connected, the snapshot is the **most recently focused** connected tab.
 
 **Act.** The agent can offer **in-page tools for the user**: highlight a target, ask the user to click (or type). The user’s action (selector, click, value) is sent back on the same bridge and returned to Grok as a **tool result**. The agent does not silently drive the operator’s pointer unless a later slice adds an explicit automation tool.
 
@@ -158,7 +158,7 @@ A file watcher is **not** “every disk write becomes the UI.” A half-written 
 
 - The loader (or an agent tool that talks to the loader) mounts a plugin only when load/`apply` succeeds. The UI reflects **ACTIVE** fibers, not the contents of a dirty editor buffer.
 - Failed load: fiber does not become `ACTIVE`; previous provider stays if it still exists; the session log records the error.
-- Unload runs inverses (routes dropped, MCP child killed, canvas contribution removed).
+- Unload runs inverses (routes dropped, the Grok child killed and with it the page-bridge MCP server, canvas contribution removed).
 - Hot replace: unload then load, or Cordis HMR through the loader — same gate.
 
 The agent improving the app is **load/unload of plugins**, not rewrite-a-monolith-and-restart-Node. Restarting Node is a last resort and drops in-process state.

@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { startKernel, stopKernel } from "../src/kernel.ts";
+import { version } from "../src/version.ts";
 import { webPlugin } from "../src/plugins/web/index.ts";
 
 const mcp = fileURLToPath(new URL("../src/mcp.ts", import.meta.url));
@@ -53,8 +54,8 @@ test("MCP observe_page returns the live DOM snapshot", async () => {
         rl.once("line", (line) => resolve(JSON.parse(line) as Record<string, unknown>));
       });
     rpc(1, "initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "t", version: "0" } });
-    const init = await read();
-    assert.ok(init.result);
+    const init = (await read()) as { result: { serverInfo: { version: string } } };
+    assert.equal(init.result.serverInfo.version, version);
     rpc(2, "tools/list");
     const list = (await read()) as { result: { tools: Array<{ name: string }> } };
     assert.ok(list.result.tools.some((t) => t.name === "observe_page"));

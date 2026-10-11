@@ -5,7 +5,7 @@
   "type": "module",
   "license": "SEE LICENSE IN LICENSE",
   "bin": {
-    "fregoli": "./src/cli.ts"
+    "fregoli": "./bin/fregoli.js"
   },
   "scripts": {
     "start": "tsx src/cli.ts",

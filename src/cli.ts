@@ -6,18 +6,32 @@ export function parseArgs(argv: string[]): {
   help: boolean;
   version: boolean;
   assistant: boolean;
+  host?: string;
 } {
+  let host: string | undefined;
+  const rest: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i] ?? "";
+    if (arg === "--host" || arg.startsWith("--host=")) {
+      const value = arg === "--host" ? argv[++i] : arg.slice("--host=".length);
+      if (value) host = value;
+      continue;
+    }
+    rest.push(arg);
+  }
   return {
-    help: argv.includes("--help") || argv.includes("-h"),
-    version: argv.includes("--version"),
-    assistant: argv.includes("--assistant"),
+    help: rest.includes("--help") || rest.includes("-h"),
+    version: rest.includes("--version"),
+    assistant: rest.includes("--assistant"),
+    host,
   };
 }
 
 export function helpText(): string {
-  return `usage: fregoli [--help] [--version] [--assistant]
+  return `usage: fregoli [--help] [--version] [--assistant] [--host <addr>]
 
   --assistant   force the stock assistant UI for this start
+  --host        listen address (default 127.0.0.1, or FREGOLI_HOST)
   --version     print version
 `;
 }
@@ -32,7 +46,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     process.stdout.write(version + "\n");
     return 0;
   }
-  const ctx = await boot({ forceAssistant: args.assistant });
+  const ctx = await boot({ forceAssistant: args.assistant, host: args.host });
   await new Promise<void>((resolve) => {
     const stop = () => {
       ctx.fiber.dispose().finally(() => resolve());

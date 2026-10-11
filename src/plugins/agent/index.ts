@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import type { ChildProcess } from "node:child_process";
 import type { Context } from "cordis";
 import { Service } from "cordis";
+import { version } from "../../version.ts";
 import { AcpClient, type McpServerSpec } from "./acp.ts";
 import { spawnAcpAgent, whichGrok } from "./grok.ts";
 
@@ -65,7 +66,7 @@ export const agentPlugin = {
             name: "fregoli",
             command: process.execPath,
             args: ["--import", "tsx", mcpPath],
-            env: { FREGOLI_URL: config.origin },
+            env: { FREGOLI_URL: config.origin, FREGOLI_VERSION: version },
           },
         ]
       : [];

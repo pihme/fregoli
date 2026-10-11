@@ -32,8 +32,8 @@ export const plugin = {
 
 2. Only load it when the file is complete (valid `apply`, not half-written).
 3. Write runtime plugins under `plugins/runtime/<name>.ts` (gitignored). Shipped plugins live in `plugins/shipped/` (in git). Kernel plugins are `src/plugins/` — do not put canvas features there.
-4. Call MCP `load_plugin` with `{ "file": "plugins/runtime/<name>.ts" }` or an absolute path.
-5. Call `reload_page` so the operator sees the new canvas. The assistant panel and chat history stay open.
+4. Call MCP `load_plugin` with `{ "file": "plugins/runtime/<name>.ts" }` or an absolute path. That writes `fregoli.json`, so the plugin is still mounted after a restart. `unload_plugin` removes it from the file. Unloading the assistant sets `assistant` to false. Plugins in `plugins/shipped/` mount on every start and are not listed in the file.
+5. Call `reload_page` so the operator sees the new canvas. The assistant panel and chat history stay open. The stock assistant is a Helferlein figure: resting, it opens the panel; while the panel is open it floats above the panel. A plugin load or unload during a reply rolls a new look, and so does a reload that happens while that reply is still running.
 6. Call `list_plugins` to see fibers and states (`ACTIVE` means the UI should have changed).
 7. Call `unload_plugin` with `{ "name": "my-feature" }` to reverse it.
 

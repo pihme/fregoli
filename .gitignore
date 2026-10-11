@@ -5,3 +5,4 @@ dist/
 *.iml
 plugins/runtime/*
 !plugins/runtime/.gitkeep
+src/RELEASE_VERSION

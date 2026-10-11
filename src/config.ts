@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export const configFileName = "fregoli.json";
 
@@ -16,6 +16,23 @@ export const defaultConfig: AppConfig = {
   assistant: true,
   plugins: [],
 };
+
+/** Path stored in fregoli.json: relative to the app root when the file lives there. */
+export function configPath(appRoot: string, file: string): string {
+  const rel = relative(resolve(appRoot), resolve(file));
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) return resolve(file);
+  return rel.split(sep).join("/");
+}
+
+export function isShippedPlugin(appRoot: string, file: string): boolean {
+  const rel = relative(resolve(appRoot, shippedPluginsDir), resolve(file));
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+export function saveConfig(appRoot: string, cfg: AppConfig): void {
+  const body = JSON.stringify({ assistant: cfg.assistant, plugins: cfg.plugins }, null, 2);
+  writeFileSync(join(appRoot, configFileName), body + "\n");
+}
 
 export function loadConfig(appRoot: string): AppConfig {
   try {

@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
 import { createInterface } from "node:readline";
+import { version } from "./version.ts";
 
 const origin = process.env.FREGOLI_URL ?? "http://127.0.0.1:8080";
 
@@ -132,7 +133,7 @@ rl.on("line", (line) => {
         respond(msg.id, {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "fregoli", version: "0.0.0" },
+          serverInfo: { name: "fregoli", version },
         });
         return;
       }

@@ -1,7 +1,13 @@
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Context, Service } from "cordis";
 import { bridgeClientScript, PageBridge, type Snapshot, type UserAction } from "./bridge.ts";
+
+const helferleinJs = readFileSync(
+  fileURLToPath(new URL("../assistant/vendor/helferlein.min.js", import.meta.url)),
+);
 
 declare module "cordis" {
   interface Context {
@@ -39,7 +45,7 @@ export class Ui extends Service {
 html,body{margin:0;height:100%;font-family:system-ui,sans-serif}
 #canvas{position:absolute;inset:0}
 #assistant-slot{position:absolute;inset:0;z-index:2;pointer-events:none}
-#assistant-slot button,#assistant-slot #assistant-panel,#assistant-slot input{pointer-events:auto}
+#assistant-slot button,#assistant-slot #assistant-panel,#assistant-slot input,#assistant-slot .assistant-hit{pointer-events:auto}
 </style>
 </head>
 <body>
@@ -256,6 +262,15 @@ async function handle(
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ text: `agent error: ${String(err)}` }));
     }
+    return;
+  }
+  if (url === "/helferlein.min.js" && (req.method === "GET" || req.method === "HEAD")) {
+    res.writeHead(200, {
+      "content-type": "text/javascript; charset=utf-8",
+      "content-length": helferleinJs.byteLength,
+      "cache-control": "public, max-age=86400",
+    });
+    res.end(req.method === "HEAD" ? undefined : helferleinJs);
     return;
   }
   if (url === "/" || url === "/index.html") {
