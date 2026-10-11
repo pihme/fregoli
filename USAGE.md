@@ -16,7 +16,7 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 
 `--host` sets the listen address. `FREGOLI_HOST` does the same when the flag is omitted. The default is `127.0.0.1`. The page-bridge MCP server always calls `127.0.0.1` on that port.
 
-`--version` prints `FREGOLI_VERSION` if it is set. Otherwise it prints `git describe --tags --match 'fregoli/v*'` when this checkout has a `fregoli` tag, and `dev` when it does not. `make build` prints that same string. A release tarball carries the tag in `src/RELEASE_VERSION`, and a Docker image carries `FREGOLI_VERSION`, so neither needs git at runtime.
+`--version` prints `FREGOLI_VERSION` if it is set. Otherwise it prints `git describe --tags --match 'fregoli/v*' --dirty` when this checkout has a `fregoli` tag (with a `-dirty` suffix if the working tree has uncommitted changes), and `dev` when it does not. `make build` prints that same string. A release tarball carries the tag in `src/RELEASE_VERSION`, and a Docker image carries `FREGOLI_VERSION`, so neither needs git at runtime.
 
 ## What you get
 
