@@ -33,3 +33,7 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 - In-process tool sandbox (the habitat wall is the box when deployed)
 
 Decided in SPEC.md (do not reopen): Cordis kernel, Grok CLI as agent, assistant replaceable/removable, DOM page bridge, no WASM.
+
+## Team rules
+
+Labels: `needs-triage`, `needs-info`, `needs-input`, `ready-for-maintainer`, `ready-for-development`, `ready-for-qa`, `ready-for-human`, `wontfix`, plus `bug` / `enhancement`. `ready-for-maintainer` is for Maintainer (website, docs fixes, smaller changes), `ready-for-development` is for Developer (larger feature and code work), and `ready-for-qa` is for QA. Team roles, labels, handover, merging and release mode: `docs/agents/team.md` (same in every repo; change it in presets first). See `docs/agents/triage-labels.md`.
