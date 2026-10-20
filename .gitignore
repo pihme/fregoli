@@ -6,3 +6,7 @@ dist/
 plugins/runtime/*
 !plugins/runtime/.gitkeep
 src/RELEASE_VERSION
+
+# Nix dev shells
+/result
+.pip/
