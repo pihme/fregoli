@@ -10,6 +10,7 @@ CLI `fregoli`, never `freg`. License: **PolyForm Noncommercial 1.0.0** (`LICENSE
 
 ## How to work here
 
+- Reference environment: `nix/reference-env` (Node.js 22) is binding for build and test. Run `nix develop ./nix/reference-env -c npm ci` and then `nix develop ./nix/reference-env -c npm test`, locally and in CI. Add language tools there. `flake.lock` is committed; Dependabot updates it.
 - TypeScript on Node 22+, ESM, npm `cordis` (cordiverse). Do not wrap `dsh`. Do not use `@deepseek-ai/cordis` unless `cordis` on npm is unusable.
 - Layout: `src/cli.ts`, `src/boot.ts`, `src/kernel.ts`, `src/plugins/{web,agent,assistant}/` (kernel), `plugins/shipped/` (repo canvas plugins), `plugins/runtime/` (agent-written, gitignored), `src/mcp.ts`, `tests/`.
 - Boot plugins: **web** (8080, canvas, page bridge), **agent** (Grok CLI over ACP; stub if `grok` is missing), **assistant** (replaceable; `fregoli --assistant` remounts stock).
