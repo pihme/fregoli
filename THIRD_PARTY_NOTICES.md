@@ -23,7 +23,7 @@ Fregoli is distributed as source (`fregoli-src.tar.gz` on each GitHub Release) a
 
 ## Vendored in the source tree
 
-### Helferlein 0.1.2
+### Helferlein 1.0.0
 
 PolyForm Noncommercial 1.0.0. The stock assistant serves `src/plugins/assistant/vendor/helferlein.min.js` at `/helferlein.min.js`. Its license is `src/plugins/assistant/vendor/LICENSE`. That minified build bundles parts of three.js (MIT); the notices are in `src/plugins/assistant/vendor/THIRD_PARTY_NOTICES.md`, and the script's header comment names the three.js version.
 
