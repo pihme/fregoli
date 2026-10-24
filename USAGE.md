@@ -24,7 +24,7 @@ Needs Node 22+. Grok CLI on `PATH` is required for a real agent; without it, cha
 | --- | --- |
 | Web plugin | HTTP on **8080**, canvas (welcome canvas from `plugins/shipped/welcome.ts` at boot), page bridge |
 | Agent plugin | Spawns `grok agent --always-approve stdio` (ACP). Stub if `grok` is missing. |
-| Assistant plugin | Lower-right chat. The stock control is a Helferlein figure (v0.1.2): it opens the panel, floats above it while the panel is open, and rolls a new look when a plugin load, unload, or reload lands. The look is kept in `localStorage` under `fregoli-helferlein`. Replaceable and removable. |
+| Assistant plugin | Lower-right chat. The stock control is a Helferlein figure (v1.0.0): it opens the panel, floats above it while the panel is open, and rolls a new look when a plugin load, unload, or reload lands. The look is kept in `localStorage` under `fregoli-helferlein`. Replaceable and removable. |
 | Loader | `POST /load` mounts a Cordis plugin file |
 | MCP | `src/mcp.ts` for Grok: `list_plugins`, `load_plugin`, `unload_plugin`, `observe_page`, `highlight`, `wait_click`, `reload_page` |
 | Skill | `.grok/skills/fregoli-app/SKILL.md` — how to change the running app |

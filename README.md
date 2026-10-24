@@ -46,7 +46,7 @@ npx tsx src/cli.ts --version
 npm link                        # puts `fregoli` on PATH; uses the tsx in this checkout
 ```
 
-A welcome canvas (`plugins/shipped/welcome.ts`) is shown at boot. The assistant in the lower right is a [Helferlein](https://github.com/pihme/helferlein) figure (v0.1.2): resting, it opens the chat; while the chat is open it floats above the panel. A change the agent applies rolls a new look, and the browser remembers it. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. Starting with `--assistant` forces the stock assistant UI for that start. `npm link` is what makes the `fregoli` command exist. It does not need a global `tsx`.
+A welcome canvas (`plugins/shipped/welcome.ts`) is shown at boot. The assistant in the lower right is a [Helferlein](https://github.com/pihme/helferlein) figure (v1.0.0): resting, it opens the chat; while the chat is open it floats above the panel. A change the agent applies rolls a new look, and the browser remembers it. Chat goes to Grok over ACP when `grok` is available, otherwise an in-process stub. Starting with `--assistant` forces the stock assistant UI for that start. `npm link` is what makes the `fregoli` command exist. It does not need a global `tsx`.
 
 Run the tests (the merge gate):
 
