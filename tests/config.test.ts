@@ -135,7 +135,7 @@ test("stock assistant serves the pinned Helferlein build", async () => {
     const script = await fetch(`http://127.0.0.1:${port}/helferlein.min.js`);
     assert.equal(script.status, 200);
     assert.match(script.headers.get("content-type") ?? "", /javascript/);
-    assert.match(await script.text(), /Helferlein 0\.1\.2/);
+    assert.match(await script.text(), /Helferlein 1\.0\.0/);
   } finally {
     await stopKernel(ctx);
   }
