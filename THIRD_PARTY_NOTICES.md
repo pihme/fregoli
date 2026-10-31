@@ -12,7 +12,7 @@ Fregoli is distributed as source (`fregoli-src.tar.gz` on each GitHub Release) a
 | [@standard-schema/spec](https://www.npmjs.com/package/@standard-schema/spec/v/1.1.0) | 1.1.0 | MIT |
 | [@types/node](https://www.npmjs.com/package/@types/node/v/26.6.5) | 26.6.5 | MIT |
 | [@typescript/typescript-linux-x64](https://www.npmjs.com/package/@typescript/typescript-linux-x64/v/7.0.2) | 7.0.2 | Apache-2.0 |
-| [cordis](https://www.npmjs.com/package/cordis/v/4.0.0-rc.11) | 4.0.0-rc.11 | MIT |
+| [cordis](https://www.npmjs.com/package/cordis/v/4.0.0-rc.12) | 4.0.0-rc.12 | MIT |
 | [cosmokit](https://www.npmjs.com/package/cosmokit/v/1.8.1) | 1.8.1 | MIT |
 | [esbuild](https://www.npmjs.com/package/esbuild/v/0.28.2) | 0.28.2 | MIT |
 | [tsx](https://www.npmjs.com/package/tsx/v/4.23.15) | 4.23.15 | MIT |
@@ -601,7 +601,7 @@ SOFTWARE.
 ---------------------------------------------------------
 ```
 
-### cordis 4.0.0-rc.11
+### cordis 4.0.0-rc.12
 
 MIT.
 
