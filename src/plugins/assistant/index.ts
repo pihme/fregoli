@@ -474,18 +474,31 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     catch (err) {}
     const body = { text };
     if (sent) body.point = sent;
+    let abandoned = false;
     fetch('/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
-    }).catch(() => {});
+    }).catch((err) => {
+      abandoned = true;
+      stopPoll();
+      clearWorking();
+      bubble('status', 'Request failed: ' + err);
+      working = false;
+      send.disabled = false;
+      if (figure) figure.idle();
+      input.focus();
+    });
     const watch = async () => {
+      if (abandoned) return;
       let live;
       try { live = await (await fetch('/chat/live')).json(); }
       catch (err) {
+        if (abandoned) return;
         pollTimer = setTimeout(watch, 400);
         return;
       }
+      if (abandoned) return;
       if (!live || live.id <= (before.id || 0)) {
         pollTimer = setTimeout(watch, 200);
         return;
