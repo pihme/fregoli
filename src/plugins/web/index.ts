@@ -265,7 +265,10 @@ async function handle(
   }
   if (url === "/chat/live" && req.method === "GET") {
     const chat = ctx.get("chat", true) as { live?: () => unknown } | undefined;
-    const body = chat?.live?.() ?? { id: 0, lines: [], text: null, done: true };
+    const live = chat?.live?.() ?? { id: 0, lines: [], text: null, done: true };
+    // Turn ids restart with every boot; the boot id lets an open tab notice a restart.
+    const boot = (ctx.get("ui", true) as { bootId?: string } | undefined)?.bootId ?? null;
+    const body = { ...(live as object), boot };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(body));
     return;

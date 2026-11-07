@@ -122,6 +122,23 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   let pluginsSeen = '';
   let working = false;
   let turnId = 0;
+  const answered = new Set();
+  // Boot the answered ids belong to. Turn ids restart with every server boot, so a new
+  // boot seen on /chat/live (server restarted while this tab stayed open) clears them.
+  let answeredBoot = window.FREGOLI_BOOT;
+  function checkBoot(live) {
+    if (!live || !live.boot || live.boot === answeredBoot) return;
+    answered.clear();
+    answeredBoot = live.boot;
+  }
+  function rememberAnswer(id) {
+    const n = Number(id);
+    if (!n) return;
+    answered.add(n);
+  }
+  function alreadyAnswered(id) {
+    return answered.has(Number(id));
+  }
   let pollTimer = 0;
   let playedReturn = false;
   let ready = false;
@@ -157,9 +174,10 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     if (!messages.length && prev && Array.isArray(prev.messages) && prev.messages.length) return;
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
-        boot: window.FREGOLI_BOOT,
+        boot: answeredBoot,
         open: document.body.classList.contains('assistant-open'),
         messages,
+        answered: [...answered],
       }));
       sessionStorage.setItem(TURN_KEY, JSON.stringify({ boot: window.FREGOLI_BOOT, id: turnId }));
     } catch (e) {}
@@ -246,15 +264,15 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     if (statusEl && statusEl.parentNode) statusEl.remove();
     statusEl = null;
   }
-  function hasReply(reply) {
-    const agents = thread.querySelectorAll('.msg-agent');
-    return agents.length > 0 && agents[agents.length - 1].textContent === reply;
-  }
   async function finishTurn(live) {
     stopPoll();
     clearWorking();
     const reply = live.text || '(no reply)';
-    if (!hasReply(reply)) bubble('agent', reply);
+    checkBoot(live);
+    if (!alreadyAnswered(live.id)) {
+      rememberAnswer(live.id);
+      bubble('agent', reply);
+    }
     let reload = false;
     try {
       const cmds = await (await fetch('/bridge/commands?canvas=' + encodeURIComponent(window.FREGOLI_CANVAS ?? ''))).json();
@@ -348,6 +366,10 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   try {
     const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
     if (saved && Array.isArray(saved.messages)) {
+      // Turn ids restart at 1 with every server boot, so answered ids only hold for the boot that saved them.
+      if (Array.isArray(saved.answered) && saved.boot === window.FREGOLI_BOOT) {
+        for (const id of saved.answered) rememberAnswer(id);
+      }
       for (const m of saved.messages) {
         if (m && (m.role === 'user' || m.role === 'agent') && m.text) bubble(m.role, m.text);
       }
@@ -366,6 +388,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   ready = true;
   save();
   fetch('/chat/live').then((res) => res.json()).then((live) => {
+    checkBoot(live);
     if (!live || !live.id) return;
     if (!live.done) {
       working = true;
@@ -375,7 +398,10 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
       follow(live.id);
       return;
     }
-    if (live.text && !hasReply(live.text)) bubble('agent', live.text);
+    if (live.text && !alreadyAnswered(live.id)) {
+      rememberAnswer(live.id);
+      bubble('agent', live.text);
+    }
   }).catch(() => {});
   function stopPicking() {
     picking = false;
@@ -457,6 +483,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     let before = { id: 0 };
     try { before = await (await fetch('/chat/live')).json(); }
     catch (err) {}
+    checkBoot(before);
     const body = { text };
     if (sent) body.point = sent;
     let abandoned = false;
