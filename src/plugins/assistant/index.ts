@@ -122,6 +122,15 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   let pluginsSeen = '';
   let working = false;
   let turnId = 0;
+  const answered = new Set();
+  function rememberAnswer(id) {
+    const n = Number(id);
+    if (!n) return;
+    answered.add(n);
+  }
+  function alreadyAnswered(id) {
+    return answered.has(Number(id));
+  }
   let pollTimer = 0;
   let playedReturn = false;
   let ready = false;
@@ -160,6 +169,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
         boot: window.FREGOLI_BOOT,
         open: document.body.classList.contains('assistant-open'),
         messages,
+        answered: [...answered],
       }));
       sessionStorage.setItem(TURN_KEY, JSON.stringify({ boot: window.FREGOLI_BOOT, id: turnId }));
     } catch (e) {}
@@ -246,15 +256,14 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     if (statusEl && statusEl.parentNode) statusEl.remove();
     statusEl = null;
   }
-  function hasReply(reply) {
-    const agents = thread.querySelectorAll('.msg-agent');
-    return agents.length > 0 && agents[agents.length - 1].textContent === reply;
-  }
   async function finishTurn(live) {
     stopPoll();
     clearWorking();
     const reply = live.text || '(no reply)';
-    if (!hasReply(reply)) bubble('agent', reply);
+    if (!alreadyAnswered(live.id)) {
+      rememberAnswer(live.id);
+      bubble('agent', reply);
+    }
     let reload = false;
     try {
       const cmds = await (await fetch('/bridge/commands?canvas=' + encodeURIComponent(window.FREGOLI_CANVAS ?? ''))).json();
@@ -348,6 +357,9 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   try {
     const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
     if (saved && Array.isArray(saved.messages)) {
+      if (Array.isArray(saved.answered)) {
+        for (const id of saved.answered) rememberAnswer(id);
+      }
       for (const m of saved.messages) {
         if (m && (m.role === 'user' || m.role === 'agent') && m.text) bubble(m.role, m.text);
       }
@@ -375,7 +387,10 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
       follow(live.id);
       return;
     }
-    if (live.text && !hasReply(live.text)) bubble('agent', live.text);
+    if (live.text && !alreadyAnswered(live.id)) {
+      rememberAnswer(live.id);
+      bubble('agent', live.text);
+    }
   }).catch(() => {});
   function stopPicking() {
     picking = false;
