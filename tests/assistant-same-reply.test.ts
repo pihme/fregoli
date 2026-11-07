@@ -182,7 +182,7 @@ test("two turns with the same answer text both stay in the thread, also after a 
     clearTimeout: globalThis.clearTimeout,
   };
   const mem = new Map<string, string>();
-  const live = { id: 0, lines: [] as string[], text: "", done: true };
+  const live = { id: 0, lines: [] as string[], text: "", done: true, boot: "boot" };
   let answer = "same response";
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
@@ -191,6 +191,8 @@ test("two turns with the same answer text both stay in the thread, also after a 
       .map((part) => part.split("</script>")[0])
       .find((part) => part.includes("fregoli-assistant"));
     assert.ok(script, "emitted assistant script");
+    const real = (await (await fetch(`http://127.0.0.1:${port}/chat/live`)).json()) as { boot?: string };
+    assert.ok(real.boot, "/chat/live carries the boot id");
     globalThis.fetch = (async (url: string, opts?: { method?: string; body?: string }) => {
       const path = String(url);
       if (path.includes("/plugins")) return new Response("[]");
@@ -248,6 +250,7 @@ test("two turns with the same answer text both stay in the thread, also after a 
 
     // Server restart: a new boot id, and turn ids start again at 1.
     live.id = 0;
+    live.boot = "boot-2";
     answer = "fresh after restart";
     dom = boot();
     (globalThis as { FREGOLI_BOOT?: string }).FREGOLI_BOOT = "boot-2";
@@ -258,6 +261,17 @@ test("two turns with the same answer text both stay in the thread, also after a 
     await drain();
     assert.deepEqual(users(), ["first", "second", "third"]);
     assert.deepEqual(agents(), ["same response", "same response", "fresh after restart"]);
+
+    // Server restart while the tab stays open: no reload, so the page keeps its old boot id,
+    // but /chat/live reports the new one and turn ids start again at 1.
+    live.id = 0;
+    live.boot = "boot-3";
+    answer = "fresh without reload";
+    dom.input.value = "fourth";
+    await dom.form.dispatch("submit", { preventDefault() {} });
+    await drain();
+    assert.deepEqual(users(), ["first", "second", "third", "fourth"]);
+    assert.deepEqual(agents(), ["same response", "same response", "fresh after restart", "fresh without reload"]);
   } finally {
     globalThis.fetch = prev.fetch;
     globalThis.setTimeout = prev.setTimeout;

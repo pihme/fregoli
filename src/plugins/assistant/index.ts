@@ -123,6 +123,14 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   let working = false;
   let turnId = 0;
   const answered = new Set();
+  // Boot the answered ids belong to. Turn ids restart with every server boot, so a new
+  // boot seen on /chat/live (server restarted while this tab stayed open) clears them.
+  let answeredBoot = window.FREGOLI_BOOT;
+  function checkBoot(live) {
+    if (!live || !live.boot || live.boot === answeredBoot) return;
+    answered.clear();
+    answeredBoot = live.boot;
+  }
   function rememberAnswer(id) {
     const n = Number(id);
     if (!n) return;
@@ -166,7 +174,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     if (!messages.length && prev && Array.isArray(prev.messages) && prev.messages.length) return;
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
-        boot: window.FREGOLI_BOOT,
+        boot: answeredBoot,
         open: document.body.classList.contains('assistant-open'),
         messages,
         answered: [...answered],
@@ -260,6 +268,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     stopPoll();
     clearWorking();
     const reply = live.text || '(no reply)';
+    checkBoot(live);
     if (!alreadyAnswered(live.id)) {
       rememberAnswer(live.id);
       bubble('agent', reply);
@@ -379,6 +388,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   ready = true;
   save();
   fetch('/chat/live').then((res) => res.json()).then((live) => {
+    checkBoot(live);
     if (!live || !live.id) return;
     if (!live.done) {
       working = true;
@@ -473,6 +483,7 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
     let before = { id: 0 };
     try { before = await (await fetch('/chat/live')).json(); }
     catch (err) {}
+    checkBoot(before);
     const body = { text };
     if (sent) body.point = sent;
     let abandoned = false;
