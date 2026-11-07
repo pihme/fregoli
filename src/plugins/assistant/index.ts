@@ -51,6 +51,19 @@ body.assistant-open #assistant-panel{display:flex}
   display:flex; align-items:center; justify-content:space-between;
   padding:.75rem 1rem; border-bottom:1px solid #eee; font-weight:600;
 }
+.assistant-tools{display:flex; align-items:center; gap:.4rem}
+#assistant-point{
+  border:1px solid #ccc; border-radius:.6rem; background:#fff; color:#111;
+  font:600 .85rem/1 system-ui,sans-serif; padding:.45rem .7rem; cursor:pointer;
+}
+body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-color:#c2410c}
+#assistant-pointed{
+  flex:1 0 100%; display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  background:#fff4e5; color:#7c2d12; border-radius:.6rem; padding:.4rem .65rem;
+  font:600 .85rem/1.3 system-ui,sans-serif;
+}
+#assistant-pointed[hidden]{display:none}
+
 #assistant-thread{
   flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:.65rem;
   padding:1rem; background:#fafafa;
@@ -59,10 +72,11 @@ body.assistant-open #assistant-panel{display:flex}
 .msg-user{align-self:flex-end; background:#0d6efd; color:#fff; border-bottom-right-radius:.3rem}
 .msg-agent{align-self:flex-start; background:#fff; border:1px solid #e6e6e6; border-bottom-left-radius:.3rem}
 .msg-status{align-self:flex-start; color:#666; font-style:italic; background:transparent; padding:.25rem .5rem}
-#assistant-form{display:flex; gap:.5rem; padding:.75rem; border-top:1px solid #eee; background:#fff}
+#assistant-form{display:flex; flex-wrap:wrap; gap:.5rem; padding:.75rem; border-top:1px solid #eee; background:#fff}
 #assistant-input{flex:1; border:1px solid #ddd; border-radius:.75rem; padding:.55rem .75rem; font:inherit}
 #assistant-form button{border:0; border-radius:.75rem; background:#111; color:#fff; padding:.55rem .9rem; cursor:pointer}
 #assistant-form button:disabled{opacity:.5; cursor:wait}
+#assistant-pointed button{background:transparent; color:#7c2d12; border:0; padding:.1rem .35rem; font:1rem/1 system-ui,sans-serif; cursor:pointer}
 #assistant-close{border:0; background:transparent; color:#111; font:1.4rem/1 system-ui,sans-serif; cursor:pointer}
 </style>
 <script src="/helferlein.min.js"></script>
@@ -72,10 +86,14 @@ body.assistant-open #assistant-panel{display:flex}
 <div id="assistant-panel" role="dialog" aria-label="Fregoli assistant">
   <div id="assistant-header">
     <span>Assistant</span>
-    <button type="button" id="assistant-close" aria-label="Close">×</button>
+    <div class="assistant-tools">
+      <button type="button" id="assistant-point" aria-pressed="false" aria-label="Point at an element on the page">Point</button>
+      <button type="button" id="assistant-close" aria-label="Close">×</button>
+    </div>
   </div>
   <div id="assistant-thread"></div>
   <form id="assistant-form">
+    <p id="assistant-pointed" hidden><span id="assistant-pointed-text"></span><button type="button" id="assistant-pointed-clear" aria-label="Clear pointed element">×</button></p>
     <input id="assistant-input" name="message" autocomplete="off" placeholder="Message">
     <button type="submit" id="assistant-send">Send</button>
   </form>
@@ -89,12 +107,28 @@ body.assistant-open #assistant-panel{display:flex}
   const form = document.getElementById('assistant-form');
   const input = document.getElementById('assistant-input');
   const send = document.getElementById('assistant-send');
+  const pointBtn = document.getElementById('assistant-point');
+  const pointed = document.getElementById('assistant-pointed');
+  const pointedText = document.getElementById('assistant-pointed-text');
+  const pointedClear = document.getElementById('assistant-pointed-clear');
+  let point = null;
+  let picking = false;
+  let pickOverlay = null;
   const KEY = 'fregoli-assistant';
   const BLOB_KEY = 'fregoli-helferlein';
-  const SPIN_KEY = 'fregoli-helferlein-spin';
+  const TURN_KEY = 'fregoli-assistant-turn';
+  const RETURN_KEY = 'fregoli-helferlein-return';
   let figure = null;
   let pluginsSeen = '';
   let working = false;
+  let turnId = 0;
+  let pollTimer = 0;
+  let playedReturn = false;
+  let ready = false;
+  let statusEl = null;
+  let restoring = false;
+  let reloadStarted = false;
+  let reloadAt = 0;
   try {
     if (window.Helferlein) {
       figure = window.Helferlein.mount(stage);
@@ -112,16 +146,25 @@ body.assistant-open #assistant-panel{display:flex}
     catch (e) {}
   }
   function save() {
+    if (!ready || !thread) return;
     const messages = [].slice.call(thread.querySelectorAll('.msg-user,.msg-agent')).map((el) => ({
       role: el.classList.contains('msg-user') ? 'user' : 'agent',
       text: el.textContent,
     }));
-    sessionStorage.setItem(KEY, JSON.stringify({
-      boot: window.FREGOLI_BOOT,
-      open: document.body.classList.contains('assistant-open'),
-      messages,
-    }));
+    let prev = null;
+    try { prev = JSON.parse(sessionStorage.getItem(KEY) || 'null'); }
+    catch (e) {}
+    if (!messages.length && prev && Array.isArray(prev.messages) && prev.messages.length) return;
+    try {
+      sessionStorage.setItem(KEY, JSON.stringify({
+        boot: window.FREGOLI_BOOT,
+        open: document.body.classList.contains('assistant-open'),
+        messages,
+      }));
+      sessionStorage.setItem(TURN_KEY, JSON.stringify({ boot: window.FREGOLI_BOOT, id: turnId }));
+    } catch (e) {}
   }
+  window.addEventListener('pagehide', () => save());
   function setOpen(open) {
     document.body.classList.toggle('assistant-open', open);
     stage.setAttribute('aria-expanded', String(open));
@@ -130,7 +173,9 @@ body.assistant-open #assistant-panel{display:flex}
       stage.tabIndex = -1;
       if (figure) figure.summon();
       input.focus();
+      revealThread();
     } else {
+      if (picking) stopPicking();
       stage.setAttribute('role', 'button');
       stage.tabIndex = 0;
       if (figure) figure.dismiss();
@@ -149,84 +194,290 @@ body.assistant-open #assistant-panel{display:flex}
     }
   });
   close.addEventListener('click', () => setOpen(false));
+  function scrollThread() {
+    thread.scrollTop = thread.scrollHeight;
+  }
+  function revealThread() {
+    requestAnimationFrame(() => {
+      scrollThread();
+      requestAnimationFrame(scrollThread);
+    });
+  }
   function bubble(role, text) {
     const el = document.createElement('div');
     el.className = 'msg msg-' + role;
     el.textContent = text;
     thread.appendChild(el);
-    thread.scrollTop = thread.scrollHeight;
-    if (role === 'user' || role === 'agent') save();
+    scrollThread();
+    if (!restoring && (role === 'user' || role === 'agent')) save();
     return el;
   }
   function pluginStamp() {
     return fetch('/plugins').then((res) => res.text()).catch(() => '');
   }
   pluginStamp().then((text) => { pluginsSeen = text; });
-  window.addEventListener('beforeunload', () => {
-    if (working) sessionStorage.setItem(SPIN_KEY, window.FREGOLI_BOOT || '');
-  });
+  function stopPoll() {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = 0;
+  }
+  function toolLabel(raw) {
+    return String(raw || '').trim().replace(/_/g, ' ').replace(/\\s+/g, ' ').toLowerCase();
+  }
+  function workingText(lines) {
+    const list = Array.isArray(lines) ? lines : [];
+    let label = '';
+    let count = 0;
+    for (let i = 0; i < list.length; i++) {
+      const next = toolLabel(list[i]);
+      if (!next) continue;
+      if (next === label) count += 1;
+      else { label = next; count = 1; }
+    }
+    if (!label) return 'Working…';
+    return count > 1 ? 'Working (' + label + ' ' + count + 'x)' : 'Working (' + label + ')';
+  }
+  function showWorking(lines) {
+    const text = workingText(lines);
+    if (!statusEl || !statusEl.isConnected) statusEl = bubble('status', text);
+    else statusEl.textContent = text;
+    scrollThread();
+  }
+  function clearWorking() {
+    if (statusEl && statusEl.parentNode) statusEl.remove();
+    statusEl = null;
+  }
+  function hasReply(reply) {
+    const agents = thread.querySelectorAll('.msg-agent');
+    return agents.length > 0 && agents[agents.length - 1].textContent === reply;
+  }
+  async function finishTurn(live) {
+    stopPoll();
+    clearWorking();
+    const reply = live.text || '(no reply)';
+    if (!hasReply(reply)) bubble('agent', reply);
+    let reload = false;
+    try {
+      const cmds = await (await fetch('/bridge/commands?canvas=' + encodeURIComponent(window.FREGOLI_CANVAS ?? ''))).json();
+      reload = Boolean(cmds && cmds.reload && Number(cmds.canvas) !== Number(window.FREGOLI_CANVAS ?? 0));
+      if (reload) window.fregoliDeferReload(cmds.canvas);
+    } catch (e) {}
+    if (reload || reloadStarted) return;
+    working = false;
+    send.disabled = false;
+    playedReturn = false;
+    const next = await pluginStamp();
+    if (figure && next !== pluginsSeen) {
+      pluginsSeen = next;
+      await figure.applied();
+      saveBlob();
+    } else if (figure) {
+      figure.idle();
+    }
+    input.focus();
+  }
+  function follow(id) {
+    turnId = id;
+    save();
+    const step = async () => {
+      let live;
+      try {
+        live = await (await fetch('/chat/live')).json();
+      } catch (e) {
+        pollTimer = setTimeout(step, 500);
+        return;
+      }
+      if (!live || live.id !== id) {
+        pollTimer = setTimeout(step, 300);
+        return;
+      }
+      showWorking(live.lines);
+      if (!live.done) {
+        pollTimer = setTimeout(step, 400);
+        return;
+      }
+      finishTurn(live);
+    };
+    step();
+  }
+  window.fregoliDeferReload = function (rev) {
+    const target = Number(rev);
+    const jump = () => {
+      const next = Number.isFinite(target) ? String(target) : String(Date.now());
+      location.replace('/?c=' + next);
+    };
+    if (reloadStarted) {
+      if (Date.now() >= reloadAt) jump();
+      return;
+    }
+    reloadStarted = true;
+    reloadAt = Date.now() + 2500;
+    save();
+    if (!figure || !working || !window.Helferlein || !window.Helferlein.rollFrom) {
+      jump();
+      return;
+    }
+    let next;
+    try {
+      const blob = figure.getBlob();
+      next = window.Helferlein.rollFrom(blob.look, blob.memory);
+    } catch (e) {
+      jump();
+      return;
+    }
+    let left = false;
+    const go = () => {
+      if (left) return;
+      left = true;
+      try { localStorage.setItem(BLOB_KEY, JSON.stringify({ look: next.look, memory: next.memory })); }
+      catch (e) {}
+      try { sessionStorage.setItem(RETURN_KEY, window.FREGOLI_BOOT || ''); }
+      catch (e) {}
+      save();
+      jump();
+    };
+    try { figure.watchReveal(go); }
+    catch (e) { go(); return; }
+    try { figure.applied({ look: next.look, memory: next.memory }); }
+    catch (e) { go(); return; }
+    setTimeout(go, 2000);
+  };
+  const back = sessionStorage.getItem(RETURN_KEY);
+  sessionStorage.removeItem(RETURN_KEY);
+  playedReturn = Boolean(back && figure);
+  restoring = true;
   try {
     const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-    if (saved && saved.boot === window.FREGOLI_BOOT && Array.isArray(saved.messages)) {
-      for (const m of saved.messages) bubble(m.role, m.text);
-      if (saved.open) setOpen(true);
-    } else {
-      sessionStorage.removeItem(KEY);
+    if (saved && Array.isArray(saved.messages)) {
+      for (const m of saved.messages) {
+        if (m && (m.role === 'user' || m.role === 'agent') && m.text) bubble(m.role, m.text);
+      }
+      if (saved.open && !playedReturn) setOpen(true);
     }
   } catch (e) {}
-  const spin = sessionStorage.getItem(SPIN_KEY);
-  sessionStorage.removeItem(SPIN_KEY);
-  if (spin && spin === window.FREGOLI_BOOT && figure) {
-    if (!document.body.classList.contains('assistant-open')) setOpen(true);
-    figure.working();
-    Promise.resolve(figure.applied()).then(() => {
-      saveBlob();
-      figure.idle();
-    }).catch(() => {});
+  restoring = false;
+  if (playedReturn) {
+    document.body.classList.add('assistant-open');
+    stage.setAttribute('aria-expanded', 'true');
+    stage.removeAttribute('role');
+    stage.tabIndex = -1;
+    Promise.resolve(figure.returnFromBack()).catch(() => {});
   }
+  revealThread();
+  ready = true;
+  save();
+  fetch('/chat/live').then((res) => res.json()).then((live) => {
+    if (!live || !live.id) return;
+    if (!live.done) {
+      working = true;
+      send.disabled = true;
+      if (figure && !playedReturn) figure.working();
+      showWorking(live.lines);
+      follow(live.id);
+      return;
+    }
+    if (live.text && !hasReply(live.text)) bubble('agent', live.text);
+  }).catch(() => {});
+  function stopPicking() {
+    picking = false;
+    document.body.classList.remove('fregoli-picking');
+    pointBtn.setAttribute('aria-pressed', 'false');
+    if (pickOverlay) pickOverlay.remove();
+    pickOverlay = null;
+    if (window.fregoliClearMark) window.fregoliClearMark();
+  }
+  function showPoint(next) {
+    point = next;
+    const role = next.role ? next.role.charAt(0).toUpperCase() + next.role.slice(1) : 'Element';
+    pointedText.textContent = next.name && next.name.toLowerCase() !== next.role ? role + ' · ' + next.name : role;
+    pointed.hidden = false;
+    input.focus();
+  }
+  function clearPoint() {
+    point = null;
+    pointed.hidden = true;
+    pointedText.textContent = '';
+  }
+  pointBtn.addEventListener('click', () => {
+    if (picking) {
+      stopPicking();
+      return;
+    }
+    picking = true;
+    document.body.classList.add('fregoli-picking');
+    pointBtn.setAttribute('aria-pressed', 'true');
+    pickOverlay = document.createElement('div');
+    pickOverlay.id = 'fregoli-pick';
+    pickOverlay.style.cssText = 'position:fixed;inset:0;z-index:1;cursor:crosshair;background:transparent';
+    document.body.appendChild(pickOverlay);
+    const hover = (ev) => {
+      if (!window.fregoliHit || !window.fregoliInspect || !window.fregoliShowMark) return;
+      const node = window.fregoliHit(ev.clientX, ev.clientY);
+      if (!node) {
+        if (window.fregoliClearMark) window.fregoliClearMark();
+        return;
+      }
+      const found = window.fregoliInspect(node);
+      if (!found) {
+        if (window.fregoliClearMark) window.fregoliClearMark();
+        return;
+      }
+      const role = found.point.role ? found.point.role.charAt(0).toUpperCase() + found.point.role.slice(1) : 'Element';
+      const label = found.point.name && found.point.name.toLowerCase() !== found.point.role ? role + ' · ' + found.point.name : role;
+      window.fregoliShowMark(found.element, label);
+    };
+    pickOverlay.addEventListener('mousemove', hover);
+    pickOverlay.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const node = window.fregoliHit ? window.fregoliHit(ev.clientX, ev.clientY) : null;
+      const found = node && window.fregoliInspect ? window.fregoliInspect(node) : null;
+      stopPicking();
+      if (found) showPoint(found.point);
+    });
+  });
+  pointedClear.addEventListener('click', clearPoint);
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && picking) stopPicking();
+  });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text || send.disabled) return;
+    if ((!text && !point) || send.disabled) return;
     input.value = '';
-    bubble('user', text);
+    const sent = point;
+    const role = sent && sent.role ? sent.role.charAt(0).toUpperCase() + sent.role.slice(1) : '';
+    const pointedLine = sent ? 'Pointed at ' + role + (sent.name ? ' “' + sent.name + '”' : '') : '';
+    bubble('user', text && pointedLine ? pointedLine + '\\n' + text : (pointedLine || text));
+    clearPoint();
+    stopPicking();
     send.disabled = true;
     working = true;
     if (figure) figure.working();
-    const started = Date.now();
-    const status = bubble('status', 'Working… talking to Grok (can take a minute)');
-    const tick = setInterval(() => {
-      const s = Math.round((Date.now() - started) / 1000);
-      status.textContent = 'Working… ' + s + 's (Grok is running; wait for a reply)';
-    }, 1000);
-    try {
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json().catch(() => ({ text: '' }));
-      status.remove();
-      const reply = data.text || '(no reply)';
-      bubble('agent', reply);
-      const next = await pluginStamp();
-      if (figure && next !== pluginsSeen) {
-        pluginsSeen = next;
-        await figure.applied();
-        saveBlob();
-      } else if (figure) {
-        figure.idle();
+    showWorking([]);
+    let before = { id: 0 };
+    try { before = await (await fetch('/chat/live')).json(); }
+    catch (err) {}
+    const body = { text };
+    if (sent) body.point = sent;
+    fetch('/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {});
+    const watch = async () => {
+      let live;
+      try { live = await (await fetch('/chat/live')).json(); }
+      catch (err) {
+        pollTimer = setTimeout(watch, 400);
+        return;
       }
-    } catch (err) {
-      status.remove();
-      bubble('status', 'Request failed: ' + err);
-      if (figure) figure.idle();
-    } finally {
-      working = false;
-      clearInterval(tick);
-      send.disabled = false;
-      input.focus();
-    }
+      if (!live || live.id <= (before.id || 0)) {
+        pollTimer = setTimeout(watch, 200);
+        return;
+      }
+      follow(live.id);
+    };
+    watch();
   });
 })();
 </script>`);

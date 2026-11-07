@@ -14,7 +14,11 @@ export type McpServerSpec = {
   env?: Record<string, string>;
 };
 
-export const FREGOLI_RULES = `You are the Fregoli in-app agent. Read skill fregoli-app (in .grok/skills/fregoli-app). The canvas is the product UI; this chat is only the assistant. Write new canvas plugins under plugins/runtime/ (not src/plugins or plugins/shipped). Then MCP load_plugin and reload_page. Use list_plugins and unload_plugin. Use observe_page to see what the user sees. Do not unload web or agent. Do not mount half-written files.`;
+export const FREGOLI_RULES = `You are the Fregoli in-app agent. The canvas is the product. This chat is only the assistant.
+Do not read the fregoli-app skill, AGENTS.md, memory, src/, or tests/. Do not call search_tool. Do not browse, click, or screenshot. The tool names and arguments below are complete.
+The canvas is one HTML string. setCanvas replaces that whole string. When the user adds or changes a piece, keep what is already on the canvas. Call observe_page once, copy nextCanvas into the plugin, and change only the part they named. If a runtime plugin already draws that canvas, edit that file, then unload_plugin its name and load_plugin the same file. Do not design a new page. Replace the canvas only when the user asks for a new scene, a different mockup, or to clear or start over.
+Plugin file plugins/runtime/<name>.ts: import type { Context } from "cordis"; export const plugin = { name: "<name>", inject: ["ui"], apply(ctx: Context) { ctx.effect(() => { ctx.ui.setCanvas("...html..."); return () => ctx.ui.setCanvas(""); }); } };
+Mount with load_plugin { "file": "plugins/runtime/<name>.ts" }. Call reload_page {} once. The tab stays until the reply finishes, then turns away and reloads once. Judge from nextCanvas only. html is the tab still on screen. Do not reload again. Reply in one sentence only if nextCanvas shows the change. If the user points at an element, that element is the one they mean. Do not highlight the assistant. Do not unload web or agent. Do not mount a half-written file.`;
 
 export class AcpClient {
   private nextId = 1;
@@ -22,7 +26,7 @@ export class AcpClient {
   private sessionId: string | null = null;
   private chunks: string[] = [];
   private closed = false;
-  private startOpts: { cwd: string; mcpServers?: McpServerSpec[] } | null = null;
+  private activity: ((line: string) => void) | null = null;
   private chain: Promise<unknown> = Promise.resolve();
 
   constructor(private child: ChildProcess) {
@@ -91,10 +95,14 @@ export class AcpClient {
     const update = (params.update ?? params) as Record<string, unknown>;
     const kind = String(update.sessionUpdate ?? update.type ?? "");
     const content = update.content as { type?: string; text?: string } | undefined;
-    if (kind.includes("agent_message") || kind.includes("message") || kind === "agent_message_chunk") {
+    if (kind === "tool_call") {
+      const title = String(update.title ?? update.name ?? "").trim();
+      if (title) this.activity?.(title);
+    }
+    if (kind.includes("agent_message") || kind === "agent_message_chunk") {
       if (content?.text) this.chunks.push(content.text);
     }
-    if (typeof update.text === "string") this.chunks.push(update.text);
+    if (typeof update.text === "string" && kind !== "tool_call") this.chunks.push(update.text);
   }
 
   private send(method: string, params: unknown, timeoutMs = 15_000): Promise<unknown> {
@@ -124,7 +132,6 @@ export class AcpClient {
   }
 
   async start(opts: { cwd: string; mcpServers?: McpServerSpec[] }): Promise<void> {
-    this.startOpts = opts;
     await this.send("initialize", {
       protocolVersion: 1,
       clientCapabilities: {},
@@ -144,37 +151,15 @@ export class AcpClient {
     this.sessionId = result.sessionId ?? "default";
   }
 
-  async recover(): Promise<void> {
-    if (!this.sessionId) return;
+  private async stopTurn(): Promise<void> {
     try {
-      await this.send("session/cancel", { sessionId: this.sessionId }, 5_000);
+      if (this.sessionId && !this.closed) {
+        await this.send("session/cancel", { sessionId: this.sessionId }, 1_000);
+      }
     } catch {
-      /* still wedged; try load */
+      /* the running turn did not stop */
     }
-    try {
-      const loaded = (await this.send(
-        "session/load",
-        { sessionId: this.sessionId, cwd: this.startOpts?.cwd },
-        10_000,
-      )) as { sessionId?: string };
-      if (loaded.sessionId) this.sessionId = loaded.sessionId;
-      return;
-    } catch {
-      /* fall through to a new session */
-    }
-    if (!this.startOpts) return;
-    const mcpServers = (this.startOpts.mcpServers ?? []).map((s) => ({
-      name: s.name,
-      command: s.command,
-      args: s.args ?? [],
-      env: Object.entries(s.env ?? {}).map(([name, value]) => ({ name, value })),
-    }));
-    const created = (await this.send("session/new", {
-      cwd: this.startOpts.cwd,
-      mcpServers,
-      _meta: { yoloMode: true, systemPromptOverride: FREGOLI_RULES },
-    })) as { sessionId?: string };
-    this.sessionId = created.sessionId ?? this.sessionId;
+    if (!this.child.killed) this.child.kill("SIGTERM");
   }
 
   private async promptOnce(text: string, timeoutMs: number): Promise<string> {
@@ -192,14 +177,20 @@ export class AcpClient {
     return out || "(no reply)";
   }
 
-  async prompt(text: string, timeoutMs = 120_000): Promise<string> {
+  async prompt(
+    text: string,
+    timeoutMs = 300_000,
+    onActivity?: (line: string) => void,
+  ): Promise<string> {
     const run = this.chain.then(async () => {
+      this.activity = onActivity ?? null;
       try {
         return await this.promptOnce(text, timeoutMs);
       } catch (err) {
-        if (!String(err).includes("ACP timeout")) throw err;
-        await this.recover();
-        return await this.promptOnce(text, timeoutMs);
+        if (String(err).includes("ACP timeout")) await this.stopTurn();
+        throw err;
+      } finally {
+        this.activity = null;
       }
     });
     this.chain = run.then(

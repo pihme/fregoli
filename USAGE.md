@@ -57,16 +57,17 @@ Base: `http://127.0.0.1:8080`
 | --- | --- | --- |
 | `/` | GET | Canvas + assistant slot |
 | `/helferlein.min.js` | GET | Pinned Helferlein build used by the stock assistant |
-| `/chat` | POST | `{ "text": "..." }` → `{ "text": "..." }` (ACP or stub) |
+| `/chat` | POST | `{ "text", "point?" }` → `{ "text" }` (ACP or stub). `point` names the element the operator clicked. A turn longer than five minutes is cancelled and not sent again. |
+| `/chat/live` | GET | Current turn: `{ "id", "lines", "text", "done" }`. The panel polls this, so a reload does not drop the reply. |
 | `/plugins` | GET | Mounted fibers |
 | `/load` | POST | `{ "file": "/abs/path/to/plugin.ts" }` |
 | `/unload` | POST | `{ "name": "draw" }` |
-| `/observe` | GET | Serialized DOM of the most recently focused connected tab |
+| `/observe` | GET | Focused tab DOM plus `nextCanvas` (canvas the server will serve). During a reply the tab stays old until the reply finishes |
 | `/bridge` | POST | Browser snapshot (`tabId`, `html`, `url`, `viewport`, `focused`) |
-| `/bridge/commands` | GET | `{ "highlight": "#sel" \| null }` |
-| `/bridge/highlight` | POST | `{ "selector": "#sel" }` |
-| `/bridge/action` | POST | `{ "type": "click"\|"type", "selector": "...", "value": "..." }` |
-| `/bridge/reload` | POST | Ask the tab to reload; assistant chat is restored open |
+| `/bridge/commands` | GET | `{ "highlight", "reload", "canvas" }`. `?canvas=` is the revision this tab loaded. A stale tab is told to reload until it reports the current revision. A reply holds that reload. |
+| `/bridge/highlight` | POST | `{ "selector": "#sel" }` fills that canvas element. Selectors inside the assistant are ignored. |
+| `/bridge/action` | POST | `{ "type": "click"\|"type", "selector", "role", "name", "context" }` |
+| `/bridge/reload` | POST | Hold a reload while a reply is in progress. When the reply finishes the figure turns away once and the page loads the final canvas. The assistant chat is restored open. A reply that changes the canvas reloads once even without this call. |
 | `/bridge/wait` | GET | `?timeout=15000` — wait for a user action |
 
 The page injects a small script that POSTs snapshots and reports clicks.

@@ -9,7 +9,8 @@ type Rpc = { jsonrpc: string; id?: number; method?: string; params?: Record<stri
 const tools = [
   {
     name: "observe_page",
-    description: "Serialized DOM of the operator's current Fregoli tab",
+    description:
+      "During a reply, nextCanvas is the canvas that appears when the reply finishes. html is the tab still on screen and stays old until then. Judge a canvas change from nextCanvas only. setCanvas replaces the whole canvas. To add or change a piece, copy nextCanvas and edit that HTML.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -37,7 +38,7 @@ const tools = [
   },
   {
     name: "highlight",
-    description: "Highlight a CSS selector on the live page",
+    description: "Fill a canvas element with an obvious highlight. Do not highlight the assistant.",
     inputSchema: {
       type: "object",
       properties: { selector: { type: "string" } },
@@ -47,7 +48,7 @@ const tools = [
   {
     name: "reload_page",
     description:
-      "Ask the operator's browser to reload so canvas changes appear. Assistant panel and chat history stay open.",
+      "Hold a reload until the current reply finishes. The figure then turns away once and the page loads the final canvas. Further calls in the same reply do not reload again. Assistant panel and chat history stay open.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -88,7 +89,9 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
   }
   if (name === "reload_page") {
     const res = await fetch(origin + "/bridge/reload", { method: "POST" });
-    return res.ok ? "reload requested; assistant will keep its open chat" : await res.text();
+    return res.ok
+      ? "reload held until this reply finishes; the figure then turns away once and the page loads the final canvas"
+      : await res.text();
   }
   if (name === "highlight") {
     const res = await fetch(origin + "/bridge/highlight", {

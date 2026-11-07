@@ -1,9 +1,28 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:net";
 import { test } from "node:test";
+import { Context, Service } from "cordis";
 import { startKernel, stopKernel } from "../src/kernel.ts";
 import { webPlugin } from "../src/plugins/web/index.ts";
 import type { PageBridge } from "../src/plugins/web/bridge.ts";
+
+class Gate extends Service {
+  done = false;
+  constructor(ctx: Context) {
+    super(ctx, "chat");
+  }
+  live() {
+    return { id: 1, lines: [] as string[], text: this.done ? "ok" : null, done: this.done };
+  }
+}
+
+const gatePlugin = {
+  name: "gate",
+  provide: ["chat"],
+  async apply(ctx: Context) {
+    await ctx.plugin(Gate);
+  },
+};
 
 async function freePort(): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -57,10 +76,67 @@ test("observe returns serialized DOM of the focused tab", async () => {
     await post("b", "<html id=b>");
     const res = await fetch(`http://127.0.0.1:${port}/observe`);
     assert.equal(res.status, 200);
-    const snap = (await res.json()) as { tabId: string; html: string };
+    const snap = (await res.json()) as { tabId: string; html: string; nextCanvas: string; note: string };
     assert.equal(snap.tabId, "b");
     assert.match(snap.html, /id=b/);
+    assert.equal(snap.nextCanvas, "");
+    assert.match(snap.note, /nextCanvas/);
   });
+});
+
+test("observe reports the canvas the server will serve", async () => {
+  await withWeb(async (port, ctx) => {
+    const ui = ctx.get("ui", true) as { setCanvas: (html: string) => void };
+    ui.setCanvas('<p id="next">Next</p>');
+    await fetch(`http://127.0.0.1:${port}/bridge`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tabId: "live",
+        html: "<html id=old>",
+        url: "http://127.0.0.1/app",
+        viewport: { width: 1, height: 1 },
+        focused: null,
+      }),
+    });
+    const snap = (await (await fetch(`http://127.0.0.1:${port}/observe`)).json()) as {
+      html: string;
+      nextCanvas: string;
+      turnOpen: boolean;
+    };
+    assert.match(snap.html, /id=old/);
+    assert.match(snap.nextCanvas, /id="next"/);
+    assert.equal(snap.turnOpen, false);
+  });
+});
+
+test("reload waits until the chat turn finishes", async () => {
+  const port = await freePort();
+  const ctx = await startKernel([
+    [webPlugin, { port, host: "127.0.0.1" }],
+    gatePlugin,
+  ]);
+  try {
+    await fetch(`http://127.0.0.1:${port}/bridge/reload`, { method: "POST" });
+    const held = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as { reload: boolean };
+    assert.equal(held.reload, false);
+    const still = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as { reload: boolean };
+    assert.equal(still.reload, false);
+    (ctx.get("chat", true) as Gate).done = true;
+    const ready = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as {
+      reload: boolean;
+      canvas: number;
+    };
+    assert.equal(ready.reload, true);
+    const again = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as { reload: boolean };
+    assert.equal(again.reload, true);
+    const acked = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${ready.canvas}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(acked.reload, false);
+  } finally {
+    await stopKernel(ctx);
+  }
 });
 
 test("highlight then user click returns a tool result", async () => {
@@ -85,18 +161,68 @@ test("highlight then user click returns a tool result", async () => {
   });
 });
 
-test("reload_page is a one-shot command for the browser", async () => {
+test("reload stays until the tab reports the current canvas", async () => {
   await withWeb(async (port) => {
     await fetch(`http://127.0.0.1:${port}/bridge/reload`, { method: "POST" });
     const first = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as {
       reload: boolean;
+      canvas: number;
     };
     assert.equal(first.reload, true);
     const second = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands`)).json()) as {
       reload: boolean;
     };
-    assert.equal(second.reload, false);
+    assert.equal(second.reload, true);
+    const acked = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${first.canvas}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(acked.reload, false);
   });
+});
+
+test("a canvas change stays pending until the tab loads it", async () => {
+  const port = await freePort();
+  const ctx = await startKernel([
+    [webPlugin, { port, host: "127.0.0.1" }],
+    gatePlugin,
+  ]);
+  try {
+    const ui = ctx.get("ui", true) as { setCanvas: (html: string) => void; canvasRev: number };
+    const seen = ui.canvasRev;
+    ui.setCanvas('<article id="three-buttons-card"></article>');
+    const held = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${seen}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(held.reload, false);
+    const still = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${seen}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(still.reload, false);
+    (ctx.get("chat", true) as Gate).done = true;
+    const ready = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${seen}`)).json()) as {
+      reload: boolean;
+      canvas: number;
+    };
+    assert.equal(ready.reload, true);
+    assert.equal(ready.canvas, ui.canvasRev);
+    const again = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${seen}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(again.reload, true);
+    const page = await fetch(`http://127.0.0.1:${port}/`);
+    assert.equal(page.headers.get("cache-control"), "no-store");
+    const html = await page.text();
+    assert.match(html, new RegExp(`window\\.FREGOLI_CANVAS=${ui.canvasRev}(?:;|<)`));
+    assert.match(html, /three-buttons-card/);
+    assert.match(html, /commands\?canvas=/);
+    assert.match(html, /location\.replace\('\/\?c=' \+/);
+    const current = (await (await fetch(`http://127.0.0.1:${port}/bridge/commands?canvas=${ui.canvasRev}`)).json()) as {
+      reload: boolean;
+    };
+    assert.equal(current.reload, false);
+  } finally {
+    await stopKernel(ctx);
+  }
 });
 
 test("GET /bridge/wait returns the user click", async () => {

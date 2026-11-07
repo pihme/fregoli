@@ -29,6 +29,10 @@ test("GET / is a blank canvas without assistant", async () => {
     const html = await res.text();
     assert.match(html, /id="canvas"/);
     assert.doesNotMatch(html, /assistant-control/);
+    const stamped = await fetch(`http://127.0.0.1:${port}/?c=4`);
+    assert.equal(stamped.status, 200);
+    assert.match(await stamped.text(), /id="canvas"/);
+    assert.equal(stamped.headers.get("cache-control"), "no-store");
   } finally {
     await stopKernel(ctx);
   }

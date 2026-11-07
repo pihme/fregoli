@@ -35,6 +35,21 @@ test("GET / includes the assistant control", async () => {
     assert.match(html, /fregoli-assistant/);
     assert.match(html, /FREGOLI_BOOT/);
     assert.match(html, /id="canvas"/);
+    assert.match(html, /\/chat\/live/);
+    assert.match(html, /returnFromBack/);
+    assert.match(html, /function revealThread\(\)/);
+    assert.match(html, /requestAnimationFrame\(scrollThread\)/);
+    assert.match(html, /returnFromBack\(\)\)\.catch\(\(\) => \{\}\);\n  \}\n  revealThread\(\);/);
+    assert.match(html, /fregoliDeferReload/);
+    assert.match(html, /Working \(/);
+    assert.match(html, /count \+ 'x\)'/);
+    assert.match(html, /replace\(\/\\s\+\/g, ' '\)/);
+    assert.match(html, /pagehide/);
+    assert.match(html, /reloadStarted/);
+    assert.match(html, /if \(picking\) stopPicking\(\);\n      stage\.setAttribute\('role', 'button'\)/);
+    assert.match(html, /location\.replace\('\/\?c=' \+ next\)/);
+    assert.match(html, /id="assistant-point"/);
+    assert.match(html, /fregoli-picking/);
   } finally {
     await stopKernel(ctx);
   }

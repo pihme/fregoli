@@ -38,6 +38,19 @@ test("POST /chat uses the stub agent", async () => {
     assert.equal(res.status, 200);
     const data = (await res.json()) as { text: string };
     assert.equal(data.text, "stub: hello");
+    const pointed = await fetch(`http://127.0.0.1:${port}/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        text: "remove this",
+        point: { role: "button", name: "One", context: "Card", selector: "#one" },
+      }),
+    });
+    const pointedBody = (await pointed.json()) as { text: string };
+    assert.equal(
+      pointedBody.text,
+      'stub: The user pointed at a button named "One" inside "Card" (#one).\nremove this',
+    );
   } finally {
     await stopKernel(ctx);
   }

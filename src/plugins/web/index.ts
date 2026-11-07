@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Context, Service } from "cordis";
 import { bridgeClientScript, PageBridge, type Snapshot, type UserAction } from "./bridge.ts";
+import { cleanPoint, promptLine } from "./point.ts";
 
 const helferleinJs = readFileSync(
   fileURLToPath(new URL("../assistant/vendor/helferlein.min.js", import.meta.url)),
@@ -21,13 +22,17 @@ export class Ui extends Service {
   canvasInner = "";
   assistantInner = "";
   bootId = crypto.randomUUID();
+  /** Increments when the canvas HTML changes. A tab reports the revision it loaded. */
+  canvasRev = 0;
 
   constructor(ctx: Context) {
     super(ctx, "ui");
   }
 
   setCanvas(html: string): void {
+    if (html === this.canvasInner) return;
     this.canvasInner = html;
+    this.canvasRev += 1;
   }
 
   setAssistant(html: string): void {
@@ -40,7 +45,7 @@ export class Ui extends Service {
 <head>
 <meta charset="utf-8">
 <title>Fregoli</title>
-<script>window.FREGOLI_BOOT=${JSON.stringify(this.bootId)}</script>
+<script>window.FREGOLI_BOOT=${JSON.stringify(this.bootId)};window.FREGOLI_CANVAS=${this.canvasRev}</script>
 <style>
 html,body{margin:0;height:100%;font-family:system-ui,sans-serif}
 #canvas{position:absolute;inset:0}
@@ -64,6 +69,12 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+function turnOpen(ctx: Context): boolean {
+  const chat = ctx.get("chat", true) as { live?: () => { id?: number; done?: boolean } } | undefined;
+  const live = chat?.live?.();
+  return Boolean(live && (live.id ?? 0) > 0 && !live.done);
+}
+
 async function handle(
   ctx: Context,
   req: IncomingMessage,
@@ -79,8 +90,18 @@ async function handle(
     }
     try {
       const snap = bridge.observe();
+      const ui = ctx.get("ui", true) as { canvasInner?: string } | undefined;
+      const open = turnOpen(ctx);
+      const note = open
+        ? "The operator's tab updates once when this reply finishes. html is the tab still on screen. Judge a canvas change from nextCanvas only."
+        : "html is the tab on screen. nextCanvas is the canvas the server will serve on the next load.";
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(snap));
+      res.end(JSON.stringify({
+        note,
+        turnOpen: open,
+        nextCanvas: ui?.canvasInner ?? "",
+        ...snap,
+      }));
     } catch (err) {
       res.writeHead(503, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: String(err) }));
@@ -106,8 +127,11 @@ async function handle(
     }
     return;
   }
-  if (url === "/bridge/commands" && req.method === "GET") {
-    const cmds = bridge?.takeCommands() ?? { highlight: null, reload: false };
+  if (req.method === "GET" && (url === "/bridge/commands" || url.startsWith("/bridge/commands?"))) {
+    const raw = new URL(url, "http://fregoli.local").searchParams.get("canvas");
+    const seen = raw === null || raw === "" ? undefined : Number(raw);
+    const cmds = bridge?.takeCommands(turnOpen(ctx), typeof seen === "number" && Number.isFinite(seen) ? seen : undefined)
+      ?? { highlight: null, reload: false, canvas: 0 };
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(cmds));
     return;
@@ -239,6 +263,13 @@ async function handle(
     }
     return;
   }
+  if (url === "/chat/live" && req.method === "GET") {
+    const chat = ctx.get("chat", true) as { live?: () => unknown } | undefined;
+    const body = chat?.live?.() ?? { id: 0, lines: [], text: null, done: true };
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+    return;
+  }
   if (url === "/chat" && req.method === "POST") {
     const chat = ctx.get("chat", true);
     if (!chat) {
@@ -248,8 +279,11 @@ async function handle(
     }
     let text = "";
     try {
-      const body = JSON.parse(await readBody(req)) as { text?: string };
-      text = body.text ?? "";
+      const body = JSON.parse(await readBody(req)) as { text?: string; point?: unknown };
+      const typed = (body.text ?? "").trim();
+      const point = cleanPoint(body.point);
+      const line = point ? promptLine(point) : "";
+      text = typed && line ? line + "\n" + typed : line || typed;
     } catch {
       text = "";
     }
@@ -273,7 +307,8 @@ async function handle(
     res.end(req.method === "HEAD" ? undefined : helferleinJs);
     return;
   }
-  if (url === "/" || url === "/index.html") {
+  const path = url.split("?")[0] || "/";
+  if (path === "/" || path === "/index.html") {
     const ui = ctx.get("ui", true);
     if (!ui) {
       res.writeHead(503);
@@ -284,6 +319,7 @@ async function handle(
     res.writeHead(200, {
       "content-type": "text/html; charset=utf-8",
       "content-length": Buffer.byteLength(body),
+      "cache-control": "no-store",
     });
     res.end(body);
     return;

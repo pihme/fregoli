@@ -23,6 +23,19 @@ function chunk(text: string) {
   );
 }
 
+function tool(title: string) {
+  process.stdout.write(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      method: "session/update",
+      params: {
+        sessionId: "s1",
+        update: { sessionUpdate: "tool_call", title, toolCallId: "t1", status: "pending" },
+      },
+    }) + "\n",
+  );
+}
+
 rl.on("line", (line) => {
   if (!line.trim()) return;
   let msg: {
@@ -54,7 +67,16 @@ rl.on("line", (line) => {
       hangNext = false;
       return;
     }
-    chunk("acp:" + text);
-    ok(msg.id, { stopReason: "end_turn" });
+    const pause = Number(process.env.FAKE_ACP_PAUSE_MS ?? "0");
+    const finish = () => {
+      chunk("acp:" + text);
+      ok(msg.id, { stopReason: "end_turn" });
+    };
+    if (pause > 0) {
+      tool("read_file");
+      setTimeout(finish, pause);
+      return;
+    }
+    finish();
   }
 });
