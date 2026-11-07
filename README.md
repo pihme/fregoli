@@ -17,11 +17,10 @@ Fregoli is a web app you change by talking to it. The page stays open. You descr
 
 Part of [Hobelbank](https://pihme.github.io/hobelbank/), a set of projects on building software in the age of AI.
 
-Open it and you get a page, plus a small figure in the lower right. That figure is the chat. Ask it to change the page. The page stays still while it works. When the answer is ready, the figure turns away, the page updates once, and the chat is still there.
+Open it and you get a page, plus a small figure in the lower right. That figure is the chat. Ask it to change the page. The page stays still while it works. When there is something new to show, the figure turns away, the page updates once, and the chat is still there.
 
-- [Website](https://pihme.github.io/fregoli/) — handbook and current status
+- [Website](https://pihme.github.io/fregoli/) — handbook
 - [Specification](SPEC.md) — product spec
-- [Usage guide](USAGE.md) — CLI, HTTP, Grok, Docker
 - [Contributing](CONTRIBUTING.md) — issues welcome, outside pull requests not accepted for now
 
 ## The three questions
@@ -34,7 +33,7 @@ Fregoli is built around three questions:
 
 ## Current status
 
-This is an MVP. You can describe a page, point at part of it, and see one update when the answer is ready. That works in principle. It feels clunky. The first reply is usually very long. The chat says `Working`, and the page stays as it is until that reply is done. Making the first reply faster is planned for 2.0 in [#36](https://github.com/pihme/fregoli/issues/36).
+This is an MVP. You can describe a page, point at part of it, and see one update when the answer is ready. That works in principle. It feels clunky. The first reply is usually very long. The chat shows that it is working, and the page stays as it is until that reply is done. Making the first reply faster is planned for 2.0 in [#36](https://github.com/pihme/fregoli/issues/36).
 
 ## Getting started
 
@@ -69,13 +68,13 @@ docker run --rm -p 8080:8080 fregoli:local
 
 The image listens on `0.0.0.0:8080`, includes `plugins/shipped/`, `fregoli.json`, and `.grok/skills/fregoli-app/`, and installs `iproute2` and `iptables` for a Hermetarium wall. A local process still listens on `127.0.0.1` unless you pass `--host` or set `FREGOLI_HOST`.
 
-Changes you make through the chat are remembered in `fregoli.json`, in the folder where you started Fregoli. Removing the assistant is remembered too:
+The app remembers its setup in `fregoli.json`, in the folder where you started Fregoli:
 
 ```json
 { "assistant": true, "plugins": [] }
 ```
 
-`fregoli/vX.Y.Z` GitHub Releases attach a source tarball stamped with that version. `--version` prints `FREGOLI_VERSION` if set, otherwise `git describe --tags --match 'fregoli/v*'`, otherwise `dev`. Full CLI and HTTP reference: [usage guide](USAGE.md).
+`fregoli/vX.Y.Z` GitHub Releases attach a source tarball stamped with that version. `--version` prints `FREGOLI_VERSION` if set, otherwise `git describe --tags --match 'fregoli/v*'`, otherwise `dev`. The product contract is in the [specification](SPEC.md).
 
 ## Working with the agent
 
@@ -83,13 +82,13 @@ Click the figure to open the chat. The figure is a [Helferlein](https://github.c
 
 Type what you want and send. One line in the chat shows what it is doing, such as `Working (read file)`. The same step again shows a count, `Working (read file 2x)`. The page you are looking at stays as it is.
 
-When the reply is finished, the figure turns away, the page loads the result, and the figure turns back. The chat stays open and scrolls to the latest message. A reply that leaves the page unchanged skips that turn. A reply that runs longer than five minutes stops, and it is not tried again on its own.
+When the reply is finished and the page has changed, the figure turns away, the page loads the result, and the figure turns back. The chat stays open and scrolls to the latest message. A reply that runs longer than five minutes stops, and it is not tried again on its own.
 
 ### Pointing
 
 Point is how you show which part of the page you mean.
 
-With the chat open, press **Point** next to Close. The cursor becomes a crosshair. Move over the page. A filled highlight wraps the thing you would click, and a label names it, such as `Button · Save`.
+With the chat open, press **Point** at the top of the panel. The cursor becomes a crosshair. Move over the page. A filled highlight wraps the thing you would click, and a label names it, such as `Button · Save`.
 
 Click to choose it. Pointing ends, and a chip above the message box shows the same label. The × on the chip clears it. Press **Point** again, or Escape, to back out before you click. Closing the chat backs out of an unfinished point. A chip you already chose stays, so you can close the chat and send it later.
 

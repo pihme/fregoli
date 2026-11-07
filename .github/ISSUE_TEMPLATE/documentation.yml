@@ -1,5 +1,5 @@
 name: Documentation
-description: Something in the readme, spec, usage guide or website is wrong, unclear or missing.
+description: Something in the readme, spec, or website is wrong, unclear or missing.
 labels: ["documentation"]
 body:
   - type: input
@@ -7,7 +7,7 @@ body:
     attributes:
       label: Where
       description: File and section, or website URL.
-      placeholder: USAGE.md, "HTTP" / https://pihme.github.io/fregoli/#start
+      placeholder: README.md, "Getting started" / https://pihme.github.io/fregoli/#start
     validations:
       required: true
   - type: textarea

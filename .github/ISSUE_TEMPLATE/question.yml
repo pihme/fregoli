@@ -4,7 +4,7 @@ labels: ["question"]
 body:
   - type: markdown
     attributes:
-      value: The [website](https://pihme.github.io/fregoli/) and the usage guide may already answer it.
+      value: The [readme](https://github.com/pihme/fregoli#readme) and the [website](https://pihme.github.io/fregoli/) may already answer it.
   - type: textarea
     id: question
     attributes:
