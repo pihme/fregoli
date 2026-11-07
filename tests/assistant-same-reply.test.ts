@@ -170,7 +170,7 @@ async function drain(): Promise<void> {
   for (let i = 0; i < 40; i++) await Promise.resolve();
 }
 
-test("two turns with the same answer text both stay in the thread", async () => {
+test("two turns with the same answer text both stay in the thread, also after a server restart", async () => {
   const port = await freePort();
   const ctx = await startKernel([
     [webPlugin, { port, host: "127.0.0.1" }],
@@ -183,6 +183,7 @@ test("two turns with the same answer text both stay in the thread", async () => 
   };
   const mem = new Map<string, string>();
   const live = { id: 0, lines: [] as string[], text: "", done: true };
+  let answer = "same response";
   try {
     const html = await (await fetch(`http://127.0.0.1:${port}/`)).text();
     const script = html
@@ -198,7 +199,7 @@ test("two turns with the same answer text both stay in the thread", async () => 
       }
       if (opts?.method === "POST" && path.includes("/chat")) {
         live.id += 1;
-        live.text = "same response";
+        live.text = answer;
         live.done = true;
         live.lines = [];
         return Response.json({ text: live.text });
@@ -244,6 +245,19 @@ test("two turns with the same answer text both stay in the thread", async () => 
     ]);
     const saved = JSON.parse(mem.get("fregoli-assistant") || "{}") as { answered?: number[] };
     assert.deepEqual(saved.answered, [1, 2]);
+
+    // Server restart: a new boot id, and turn ids start again at 1.
+    live.id = 0;
+    answer = "fresh after restart";
+    dom = boot();
+    (globalThis as { FREGOLI_BOOT?: string }).FREGOLI_BOOT = "boot-2";
+    eval(script!);
+    await drain();
+    dom.input.value = "third";
+    await dom.form.dispatch("submit", { preventDefault() {} });
+    await drain();
+    assert.deepEqual(users(), ["first", "second", "third"]);
+    assert.deepEqual(agents(), ["same response", "same response", "fresh after restart"]);
   } finally {
     globalThis.fetch = prev.fetch;
     globalThis.setTimeout = prev.setTimeout;

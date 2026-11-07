@@ -357,7 +357,8 @@ body.fregoli-picking #assistant-point{background:#c2410c; color:#fff; border-col
   try {
     const saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
     if (saved && Array.isArray(saved.messages)) {
-      if (Array.isArray(saved.answered)) {
+      // Turn ids restart at 1 with every server boot, so answered ids only hold for the boot that saved them.
+      if (Array.isArray(saved.answered) && saved.boot === window.FREGOLI_BOOT) {
         for (const id of saved.answered) rememberAnswer(id);
       }
       for (const m of saved.messages) {
