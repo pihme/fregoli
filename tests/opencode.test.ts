@@ -9,6 +9,7 @@ import { startKernel, stopKernel } from "../src/kernel.ts";
 import { loaderPlugin } from "../src/loader.ts";
 import { FREGOLI_RULES, pickAllowOption } from "../src/plugins/agent/acp.ts";
 import { agentPlugin } from "../src/plugins/agent/index.ts";
+import { openCodeModelConfig, readModelEndpoint } from "../src/plugins/agent/model.ts";
 import {
   OPENCODE_AGENT,
   OPENCODE_ARGS,
@@ -22,6 +23,14 @@ import { webPlugin } from "../src/plugins/web/index.ts";
 const fakeAcp = fileURLToPath(new URL("./fixtures/fake-acp.ts", import.meta.url));
 const drawPlugin = fileURLToPath(new URL("./fixtures/draw.ts", import.meta.url));
 const appRoot = process.cwd();
+
+/** A model endpoint for the OpenCode path; nothing listens there and no test calls it. */
+const MODEL_ENV = {
+  FREGOLI_MODEL_BASE_URL: "http://127.0.0.1:9/v1",
+  FREGOLI_MODEL_API_KEY: "test-key-not-real",
+  FREGOLI_MODEL_ID: "test-model",
+};
+const modelConfig = openCodeModelConfig(readModelEndpoint(MODEL_ENV).endpoint!);
 
 async function freePort(): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -111,6 +120,25 @@ test("the in-app OpenCode profile uses Fregoli's prompt, no skills and no projec
   assert.deepEqual(OPENCODE_ARGS, ["acp"]);
 });
 
+test("one OPENCODE_CONFIG_CONTENT carries both the slim profile and the model provider", () => {
+  const env = opencodeEnv(modelConfig);
+  assert.equal(env.OPENCODE_DISABLE_PROJECT_CONFIG, "1");
+  const cfg = JSON.parse(env.OPENCODE_CONFIG_CONTENT!) as Record<string, unknown> & {
+    agent: Record<string, { prompt: string; permission: { skill: Record<string, string> } }>;
+  };
+  // Slim profile
+  assert.equal(cfg.default_agent, OPENCODE_AGENT);
+  assert.equal(cfg.agent[OPENCODE_AGENT]!.prompt, FREGOLI_RULES);
+  assert.deepEqual(cfg.agent[OPENCODE_AGENT]!.permission.skill, { "*": "deny" });
+  // Model provider
+  assert.equal(cfg.model, modelConfig.model);
+  assert.equal(cfg.model, "fregoli/test-model");
+  assert.deepEqual(cfg.provider ?? cfg.providers, modelConfig.provider ?? modelConfig.providers);
+  // Names the key variable, never the key
+  assert.equal(env.OPENCODE_CONFIG_CONTENT!.includes(MODEL_ENV.FREGOLI_MODEL_API_KEY), false);
+  assert.ok(env.OPENCODE_CONFIG_CONTENT!.includes("{env:FREGOLI_MODEL_API_KEY}"));
+});
+
 test("a permission request picks the agent's allow-always option", () => {
   const options = [
     { optionId: "once", kind: "allow_once" },
@@ -139,6 +167,38 @@ test("chat stub when opencode is not on PATH", async () => {
   }
 });
 
+test("chat stub when opencode is on PATH but no model endpoint is set", async () => {
+  const bin = fakeOpencodeBin();
+  const record = join(bin, "record.jsonl");
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await withEnv(
+      {
+        PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
+        FAKE_ACP_RECORD: record,
+        FREGOLI_MODEL_BASE_URL: "",
+        FREGOLI_MODEL_API_KEY: "",
+        FREGOLI_MODEL_ID: "",
+      },
+      async () => {
+        const ctx = await startKernel([[agentPlugin, { appRoot }]]);
+        try {
+          assert.equal(ctx.chat.child, null);
+          assert.equal(await ctx.chat.reply("hi"), "stub: hi");
+        } finally {
+          await stopKernel(ctx);
+        }
+      },
+    );
+    // OpenCode was never started.
+    assert.throws(() => readFileSync(record, "utf8"));
+  } finally {
+    console.warn = warn;
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
 test("chat stub when the agent is switched off", async () => {
   const ctx = await startKernel([[agentPlugin, { acp: false }]]);
   try {
@@ -154,7 +214,9 @@ test("opencode on PATH runs as `opencode acp` with the slim profile and one sess
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   try {
-    await withEnv({ PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`, FAKE_ACP_RECORD: record }, async () => {
+    await withEnv(
+      { ...MODEL_ENV, PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`, FAKE_ACP_RECORD: record },
+      async () => {
       const ctx = await startKernel([
         [webPlugin, { port, host: "127.0.0.1" }],
         loaderPlugin,
@@ -170,14 +232,15 @@ test("opencode on PATH runs as `opencode acp` with the slim profile and one sess
       } finally {
         await stopKernel(ctx);
       }
-    });
+      },
+    );
     const events = records(record);
     const spawned = events.filter((e) => e.event === "spawn");
     assert.equal(spawned.length, 1);
     const spawn = spawned[0] as { argv: string[]; cwd: string; env: Record<string, string | null> };
     assert.deepEqual(spawn.argv, ["acp"]);
     assert.equal(spawn.cwd, appRoot);
-    assert.deepEqual(spawn.env, opencodeEnv());
+    assert.deepEqual(spawn.env, opencodeEnv(modelConfig));
     const sessions = events.filter((e) => e.event === "session/new");
     assert.equal(sessions.length, 1);
     const params = sessions[0]!.params as {
@@ -207,7 +270,7 @@ test("page-bridge MCP tools from session/new work from chat turns", async () => 
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   try {
-    await withEnv({ PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` }, async () => {
+    await withEnv({ ...MODEL_ENV, PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` }, async () => {
       const ctx = await startKernel([
         [webPlugin, { port, host: "127.0.0.1" }],
         loaderPlugin,

@@ -103,7 +103,7 @@ If the web plugin unloads, 8080 closes. The agent must not unload it without a r
 
 **Decision change (#53).** OpenCode over ACP replaces the earlier decision for Grok CLI (`grok agent --always-approve stdio`) as the in-app agent. Grok CLI is no longer spawned.
 
-OpenCode already has shell, file tools, and an MCP client. We do not reimplement those in the agent plugin. Model and provider come from OpenCode’s own configuration; Fregoli sets no model of its own here (a configurable OpenAI-compatible Chat Completions endpoint is #54).
+OpenCode already has shell, file tools, and an MCP client. We do not reimplement those in the agent plugin. The model is the operator’s OpenAI-compatible Chat Completions endpoint, named with `FREGOLI_MODEL_*`; there is no vendor default (see **Model endpoint** below).
 
 **One session.** The plugin opens one ACP session (`initialize`, then `session/new`) when it starts and keeps it for the life of the process. Every chat turn is a `session/prompt` in that session; a page reload does not start a new one. Only a timed-out turn replaces the child and its session. Permission requests are approved automatically (the agent’s “always” option), as with `--always-approve` before.
 
@@ -111,10 +111,10 @@ OpenCode already has shell, file tools, and an MCP client. We do not reimplement
 
 - **System prompt:** Fregoli’s own rules (`FREGOLI_RULES` in `src/plugins/agent/acp.ts`), as the `prompt` of a primary OpenCode agent `fregoli` that is the `default_agent`. OpenCode still appends its short environment block (model name, working directory, platform, date).
 - **No skills:** `permission.skill` is `deny` for `*`, so OpenCode sends no skill catalog and no `skill` tool.
-- **No project config:** `OPENCODE_DISABLE_PROJECT_CONFIG=1`, so the app root’s `AGENTS.md` and any project `opencode.json` are not loaded. The operator’s global OpenCode config (for example `~/.config/opencode/`) still applies; that is where the model is set.
+- **No project config:** `OPENCODE_DISABLE_PROJECT_CONFIG=1`, so the app root’s `AGENTS.md` and any project `opencode.json` are not loaded. The operator’s global OpenCode config (for example `~/.config/opencode/`) still applies; the model does not come from there but from `FREGOLI_MODEL_*`.
 - **Page bridge:** the MCP server spec is passed in `session/new`, as before; OpenCode names its tools `fregoli_<tool>`.
 
-The profile is passed inline through `OPENCODE_CONFIG_CONTENT` (`src/plugins/agent/opencode.ts`). Verified with OpenCode 1.18.34 and a local fake Chat Completions endpoint: the first model request carried the system prompt `FREGOLI_RULES` plus the environment block (about 1.8 kB), the built-in tools (`bash`, `edit`, `glob`, `grep`, `read`, `task`, `todowrite`, `webfetch`, `write`) and the seven `fregoli_*` tools, and no `AGENTS.md`, skill catalog, or `skill` tool. OpenCode also sends one short title request per new session. Trimming the built-in tool schemas and per-call size reporting stay with #36.
+The profile is passed inline through `OPENCODE_CONFIG_CONTENT` (`src/plugins/agent/opencode.ts`), in the same JSON as the model provider (**Model endpoint** below). Verified with OpenCode 1.18.34 and a local fake Chat Completions endpoint: the first model request carried the system prompt `FREGOLI_RULES` plus the environment block (about 1.8 kB), the built-in tools (`bash`, `edit`, `glob`, `grep`, `read`, `task`, `todowrite`, `webfetch`, `write`) and the seven `fregoli_*` tools, and no `AGENTS.md`, skill catalog, or `skill` tool. OpenCode also sends one short title request per new session. Trimming the built-in tool schemas and per-call size reporting stay with #36.
 
 The agent is **told the setup** (system context / rules, not a secret): the canvas is what users see; it changes the app by writing Cordis plugins and asking the loader to load or unload; half-written modules must not be mounted; the assistant UI is replaceable and may be removed. It may install and run ordinary tools (OpenCode’s shell). If it is running in a sealed habitat, that is extra context, not a different agent.
 
@@ -126,7 +126,11 @@ It can:
 
 Skills and further MCP servers that the agent writes into the app root are not picked up by the in-app session under the slim profile. **Grok marketplace plugins** and OpenCode plugin bundles are out of scope until asked. Say **Cordis plugin** when we mean in-process load/unload.
 
-A stub is allowed only if the `opencode` binary is missing. When `opencode` is on `PATH`, the agent plugin must use it, not a bare chat API and not another vendor CLI.
+A stub is allowed only if the `opencode` binary is missing or no valid model endpoint is set. When `opencode` is on `PATH` and the endpoint is set, the agent plugin must use it, not a bare chat API and not another vendor CLI.
+
+**Model endpoint.** The in-app agent's model is an operator-supplied [OpenAI-compatible Chat Completions](https://platform.openai.com/docs/api-reference/chat) endpoint (`POST <base URL>/chat/completions`; the Responses API is out of scope). Three environment variables name it: `FREGOLI_MODEL_BASE_URL` (http or https, no credentials in the URL), `FREGOLI_MODEL_API_KEY`, and `FREGOLI_MODEL_ID`. There is no vendor default. The key comes from the environment only, never from `fregoli.json` or another committed file. In a habitat the base URL is `http://model.hermetarium.test/v1` and the gate injects the real key, so the box holds a placeholder (`src/plugins/agent/model.ts`).
+
+The agent plugin passes the endpoint to OpenCode in the one `OPENCODE_CONFIG_CONTENT` that also carries the slim profile (`{ ...opencodeConfig(), ...openCodeModelConfig(endpoint) }`): provider `fregoli` with package `@opencode/ai/providers/openai-compatible`, `settings.baseURL`, `settings.apiKey` = `{env:FREGOLI_MODEL_API_KEY}` (the variable name, not the value), and default model `fregoli/<model id>`. When the ACP child is OpenCode and any variable is missing or invalid, the plugin does not start it (OpenCode would otherwise pick its own default provider); it logs one `fregoli agent: no model endpoint (...)` line and the chat answers with the stub. Neither Fregoli nor its tests call the endpoint; the merge gate uses a fake ACP child and needs no vendor key.
 
 ### 8c. Assistant
 

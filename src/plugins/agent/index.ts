@@ -5,6 +5,7 @@ import { Service } from "cordis";
 import { version } from "../../version.ts";
 import { AcpClient, type McpServerSpec } from "./acp.ts";
 import { spawnAcpAgent, whichOpencode } from "./opencode.ts";
+import { isOpenCode, noEndpointMessage, openCodeModelConfig, readModelEndpoint } from "./model.ts";
 
 declare module "cordis" {
   interface Context {
@@ -104,6 +105,8 @@ export type AgentConfig = {
   promptTimeoutMs?: number;
   acpHang?: boolean;
   acpPauseMs?: number;
+  /** Where the model endpoint variables are read from (default `process.env`). */
+  modelEnv?: NodeJS.ProcessEnv;
 };
 
 export const agentPlugin = {
@@ -118,6 +121,14 @@ export const agentPlugin = {
     const spawnEnv: NodeJS.ProcessEnv = {};
     if (config.acpHang) spawnEnv.FAKE_ACP_HANG = "1";
     if (config.acpPauseMs) spawnEnv.FAKE_ACP_PAUSE_MS = String(config.acpPauseMs);
+    const model = readModelEndpoint(config.modelEnv ?? process.env);
+    // Merged with the slim profile into one OPENCODE_CONFIG_CONTENT by spawnAcpAgent.
+    const modelConfig = model.endpoint ? openCodeModelConfig(model.endpoint) : undefined;
+    if (!model.endpoint && isOpenCode(config.acpCommand ?? whichOpencode() ?? "")) {
+      // OpenCode without an operator endpoint would fall back to its own default vendor.
+      console.warn(noEndpointMessage(model.problem));
+      return;
+    }
     const mcpPath = fileURLToPath(new URL("../../mcp.ts", import.meta.url));
     const mcpServers: McpServerSpec[] = config.origin
       ? [
@@ -145,6 +156,7 @@ export const agentPlugin = {
         command: config.acpCommand,
         args: config.acpArgs,
         env: Object.keys(spawnEnv).length ? spawnEnv : undefined,
+        model: modelConfig,
       });
       chat.child = child;
       if (!child) return;
@@ -156,6 +168,7 @@ export const agentPlugin = {
       command: config.acpCommand,
       args: config.acpArgs,
       env: Object.keys(spawnEnv).length ? spawnEnv : undefined,
+      model: modelConfig,
     });
     if (!child) return;
     await connect(child);

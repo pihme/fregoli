@@ -49,19 +49,29 @@ export function opencodeConfig(): Record<string, unknown> {
 }
 
 /**
- * Environment for the OpenCode child. `OPENCODE_DISABLE_PROJECT_CONFIG` keeps the app root's
- * `AGENTS.md` and project `opencode.json` out of the in-app session.
+ * Environment for the OpenCode child. One `OPENCODE_CONFIG_CONTENT` carries the slim profile
+ * and, when the operator named an endpoint, the model provider (`openCodeModelConfig` in
+ * `model.ts`): `{ ...opencodeConfig(), ...model }`. The two share no top-level key except
+ * `$schema`. `OPENCODE_DISABLE_PROJECT_CONFIG` keeps the app root's `AGENTS.md` and project
+ * `opencode.json` out of the in-app session.
  */
-export function opencodeEnv(): Record<string, string> {
+export function opencodeEnv(model: Record<string, unknown> = {}): Record<string, string> {
   return {
-    OPENCODE_CONFIG_CONTENT: JSON.stringify(opencodeConfig()),
+    OPENCODE_CONFIG_CONTENT: JSON.stringify({ ...opencodeConfig(), ...model }),
     OPENCODE_DISABLE_PROJECT_CONFIG: "1",
   };
 }
 
 export function spawnAcpAgent(
   ctx: Context,
-  opts: { cwd: string; command?: string; args?: string[]; env?: NodeJS.ProcessEnv },
+  opts: {
+    cwd: string;
+    command?: string;
+    args?: string[];
+    env?: NodeJS.ProcessEnv;
+    /** Model part of the OpenCode config (`openCodeModelConfig`), merged into the slim profile. */
+    model?: Record<string, unknown>;
+  },
 ): ChildProcess | null {
   const command = opts.command ?? whichOpencode();
   if (!command) return null;
@@ -69,7 +79,7 @@ export function spawnAcpAgent(
   const child = spawn(command, args, {
     cwd: opts.cwd,
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, ...opencodeEnv(), ...opts.env },
+    env: { ...process.env, ...opts.env, ...opencodeEnv(opts.model) },
   });
   child.stderr?.resume();
   ctx.effect(() => {

@@ -37,7 +37,7 @@ This is an MVP. You can describe a page, point at part of it, and see one update
 
 ## Getting started
 
-You need Node 22 or newer. For a real conversation, install [OpenCode](https://opencode.ai) so that `opencode` is on your `PATH`, and give it a model in its own configuration (for example `~/.config/opencode/opencode.json`). Without `opencode`, the chat still opens and answers with a stand-in.
+You need Node 22 or newer. For a real conversation, install [OpenCode](https://opencode.ai) so that `opencode` is on your `PATH`, and name a model endpoint: any OpenAI-compatible Chat Completions API, given with three environment variables (see [Model endpoint](#model-endpoint)). Without `opencode` or without an endpoint, the chat still opens and answers with a stand-in.
 
 The command is `fregoli`, in full. Do not shorten it to `freg`.
 
@@ -67,6 +67,29 @@ docker run --rm -p 8080:8080 fregoli:local
 ```
 
 The image listens on `0.0.0.0:8080`, includes `plugins/shipped/`, `fregoli.json`, and `.grok/skills/fregoli-app/`, and installs `iproute2` and `iptables` for a Hermetarium wall. A local process still listens on `127.0.0.1` unless you pass `--host` or set `FREGOLI_HOST`.
+
+### Model endpoint
+
+The in-app agent talks to an [OpenAI-compatible Chat Completions](https://platform.openai.com/docs/api-reference/chat) endpoint that you name. There is no built-in vendor and no default model. Any host that serves `POST <base URL>/chat/completions` works; the Responses API is not used.
+
+| Variable | Meaning |
+| --- | --- |
+| `FREGOLI_MODEL_BASE_URL` | Base URL up to and including `/v1`, for example `https://api.example.com/v1`. `http` or `https`, no user or password in the URL. |
+| `FREGOLI_MODEL_API_KEY` | Bearer key for that endpoint. Read from the environment only; never put it in `fregoli.json` or another committed file. |
+| `FREGOLI_MODEL_ID` | Model id as the endpoint names it, for example `qwen3-coder`. |
+
+Set all three before you start `fregoli`:
+
+```bash
+export FREGOLI_MODEL_BASE_URL=http://127.0.0.1:11434/v1   # e.g. a local Ollama
+export FREGOLI_MODEL_API_KEY=local-placeholder             # a local server may ignore it
+export FREGOLI_MODEL_ID=qwen3-coder
+npx tsx src/cli.ts
+```
+
+With a container, pass them with `docker run -e FREGOLI_MODEL_BASE_URL -e FREGOLI_MODEL_API_KEY -e FREGOLI_MODEL_ID ...`. In a [Hermetarium](https://github.com/pihme/hermetarium) habitat the base URL is `http://model.hermetarium.test/v1`. The gate holds the real key and sets `Authorization` on the way out, so the key variable inside the box is only a placeholder.
+
+Fregoli hands these to OpenCode, the in-app agent, as a provider in the same `OPENCODE_CONFIG_CONTENT` that carries the slim profile below (`@opencode/ai/providers/openai-compatible`, model `fregoli/<model id>`). That config names the key variable (`{env:FREGOLI_MODEL_API_KEY}`), not the key. If a variable is missing or the base URL is invalid, Fregoli does not start OpenCode at all, so it cannot fall back to a vendor of its own. It logs one line, `fregoli agent: no model endpoint (...)`, and the chat answers with the stand-in.
 
 The app remembers its setup in `fregoli.json`, in the folder where you started Fregoli:
 
@@ -106,9 +129,9 @@ The **kernel** is Cordis. Capabilities are plugins ("fibers") that can be mounte
 
 **Web** serves HTTP on 8080, the canvas, the assistant slot, a JSON API and the page bridge (DOM snapshot, highlight, user click).
 
-**Agent** spawns [OpenCode](https://opencode.ai/docs/cli/acp/) as `opencode acp` and speaks ACP. This replaces the earlier Grok CLI (`grok agent --always-approve stdio`). It hands OpenCode an MCP server: `list_plugins` (mounted Cordis fibers), `load_plugin` (mount a plugin file), `unload_plugin` (dispose a fiber by name), `observe_page` (the tab on screen, plus `nextCanvas`, the canvas HTML the server will serve when the reply finishes), `highlight` (fill a canvas element), `wait_click` (highlight a selector and wait for the user to click or type), `reload_page` (hold one reload until the reply finishes). One ACP session stays open for the life of the process; a page reload does not start a new one. A turn longer than five minutes is cancelled and that OpenCode child is replaced. The timed-out prompt is not sent again. Without `opencode` it falls back to a stub. Unload kills that child.
+**Agent** spawns [OpenCode](https://opencode.ai/docs/cli/acp/) as `opencode acp` and speaks ACP. This replaces the earlier Grok CLI (`grok agent --always-approve stdio`). It hands OpenCode an MCP server: `list_plugins` (mounted Cordis fibers), `load_plugin` (mount a plugin file), `unload_plugin` (dispose a fiber by name), `observe_page` (the tab on screen, plus `nextCanvas`, the canvas HTML the server will serve when the reply finishes), `highlight` (fill a canvas element), `wait_click` (highlight a selector and wait for the user to click or type), `reload_page` (hold one reload until the reply finishes). One ACP session stays open for the life of the process; a page reload does not start a new one. A turn longer than five minutes is cancelled and that OpenCode child is replaced. The timed-out prompt is not sent again. Without `opencode`, or without a valid model endpoint, it falls back to a stub. Unload kills that child.
 
-The in-app session is slim: Fregoli's own system prompt (an OpenCode agent `fregoli`), no skills, and no project config, so the app root's `AGENTS.md` is not loaded (`OPENCODE_DISABLE_PROJECT_CONFIG=1`). The profile is passed in `OPENCODE_CONFIG_CONTENT`; details in the [specification](SPEC.md) §8b.
+The in-app session is slim: Fregoli's own system prompt (an OpenCode agent `fregoli`), no skills, and no project config, so the app root's `AGENTS.md` is not loaded (`OPENCODE_DISABLE_PROJECT_CONFIG=1`). The profile is passed in `OPENCODE_CONFIG_CONTENT`, together with the model provider from [Model endpoint](#model-endpoint); details in the [specification](SPEC.md) §8b.
 
 **Assistant** is its own plugin: lower-right chat, replaceable and removable. The stock UI is the Helferlein avatar described above, with a Point button at the top of the panel. The thread for that tab is kept in `sessionStorage`.
 
