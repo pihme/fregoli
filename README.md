@@ -37,7 +37,7 @@ This is an MVP. You can describe a page, point at part of it, and see one update
 
 ## Getting started
 
-You need Node 22 or newer. For a real conversation, install the Grok CLI and sign in, or set `XAI_API_KEY`. Without Grok, the chat still opens and answers with a stand-in.
+You need Node 22 or newer. For a real conversation, the in-app agent needs a model endpoint: any OpenAI-compatible Chat Completions API, named with three environment variables (see [Model endpoint](#model-endpoint)). Without one, the chat still opens and answers with a stand-in.
 
 The command is `fregoli`, in full. Do not shorten it to `freg`.
 
@@ -67,6 +67,29 @@ docker run --rm -p 8080:8080 fregoli:local
 ```
 
 The image listens on `0.0.0.0:8080`, includes `plugins/shipped/`, `fregoli.json`, and `.grok/skills/fregoli-app/`, and installs `iproute2` and `iptables` for a Hermetarium wall. A local process still listens on `127.0.0.1` unless you pass `--host` or set `FREGOLI_HOST`.
+
+### Model endpoint
+
+The in-app agent talks to an [OpenAI-compatible Chat Completions](https://platform.openai.com/docs/api-reference/chat) endpoint that you name. There is no built-in vendor and no default model. Any host that serves `POST <base URL>/chat/completions` works; the Responses API is not used.
+
+| Variable | Meaning |
+| --- | --- |
+| `FREGOLI_MODEL_BASE_URL` | Base URL up to and including `/v1`, for example `https://api.example.com/v1`. `http` or `https`, no user or password in the URL. |
+| `FREGOLI_MODEL_API_KEY` | Bearer key for that endpoint. Read from the environment only; never put it in `fregoli.json` or another committed file. |
+| `FREGOLI_MODEL_ID` | Model id as the endpoint names it, for example `qwen3-coder`. |
+
+Set all three before you start `fregoli`:
+
+```bash
+export FREGOLI_MODEL_BASE_URL=http://127.0.0.1:11434/v1   # e.g. a local Ollama
+export FREGOLI_MODEL_API_KEY=local-placeholder             # a local server may ignore it
+export FREGOLI_MODEL_ID=qwen3-coder
+npx tsx src/cli.ts
+```
+
+With a container, pass them with `docker run -e FREGOLI_MODEL_BASE_URL -e FREGOLI_MODEL_API_KEY -e FREGOLI_MODEL_ID ...`. In a [Hermetarium](https://github.com/pihme/hermetarium) habitat the base URL is `http://model.hermetarium.test/v1`. The gate holds the real key and sets `Authorization` on the way out, so the key variable inside the box is only a placeholder.
+
+Fregoli hands these to OpenCode, the in-app agent, as an `OPENCODE_CONFIG_CONTENT` provider (`@opencode/ai/providers/openai-compatible`, model `fregoli/<model id>`). That config names the key variable (`{env:FREGOLI_MODEL_API_KEY}`), not the key. If a variable is missing or the base URL is invalid, Fregoli does not start OpenCode at all, so it cannot fall back to a vendor of its own. It logs one line, `fregoli agent: no model endpoint (...)`, and the chat answers with the stand-in.
 
 The app remembers its setup in `fregoli.json`, in the folder where you started Fregoli:
 

@@ -101,7 +101,7 @@ If the web plugin unloads, 8080 closes. The agent must not unload it without a r
 
 **Provides** the chat service (ACP session to Grok). The assistant plugin **injects** that service. Implementation: spawn **Grok CLI** as a child and speak [ACP](https://agentclientprotocol.com) (`grok agent --always-approve stdio`, working directory = app root). Unload kills that process (`ctx.effect`). This is not the Grok TUI, and Grok is not the Cordis kernel.
 
-Grok already has shell, file tools, skills, and MCP. We do not reimplement those in the agent plugin. Default model is whatever that CLI uses (override with Grok’s own flags/config). Auth: `XAI_API_KEY`, or a habitat ACL that injects `Authorization` on the path to the xAI origin.
+Grok already has shell, file tools, skills, and MCP. We do not reimplement those in the agent plugin. The model is not Grok-specific: see **Model endpoint** below.
 
 The agent is **told the setup** (system context / rules, not a secret): this process is a Cordis graph; boot plugins are web, agent, and assistant; the assistant UI is replaceable and may be removed; it changes the app by writing Cordis plugins, Grok skills, and MCP servers and asking the loader to load or unload; the canvas is what users see; half-written modules must not be mounted; it may install and run ordinary tools (Grok’s shell). If it is running in a sealed habitat, that is extra context, not a different agent.
 
@@ -125,6 +125,10 @@ A skill is not a Cordis plugin.
 **MCP** is Grok’s. We do not add a second MCP client. Config: `[mcp_servers.<name>]` in `<app root>/.grok/config.toml`. Stdio is what we document. If the agent writes an HTTP/SSE server into that file, Grok CLI may use it; Fregoli does not implement HTTP MCP itself. **Grok marketplace plugins** (skill+MCP+hook bundles) are out of scope until asked. Say **Cordis plugin** when we mean in-process load/unload.
 
 A first-slice stub is allowed only if the `grok` binary is missing. When `grok` is on `PATH`, the agent plugin must use it, not a bare chat API and not another vendor CLI.
+
+**Model endpoint.** The in-app agent's model is an operator-supplied [OpenAI-compatible Chat Completions](https://platform.openai.com/docs/api-reference/chat) endpoint (`POST <base URL>/chat/completions`; the Responses API is out of scope). Three environment variables name it: `FREGOLI_MODEL_BASE_URL` (http or https, no credentials in the URL), `FREGOLI_MODEL_API_KEY`, and `FREGOLI_MODEL_ID`. There is no vendor default. The key comes from the environment only, never from `fregoli.json` or another committed file. In a habitat the base URL is `http://model.hermetarium.test/v1` and the gate injects the real key, so the box holds a placeholder (`src/plugins/agent/model.ts`).
+
+The agent plugin passes the endpoint to OpenCode as `OPENCODE_CONFIG_CONTENT`: provider `fregoli` with package `@opencode/ai/providers/openai-compatible`, `settings.baseURL`, `settings.apiKey` = `{env:FREGOLI_MODEL_API_KEY}` (the variable name, not the value), and default model `fregoli/<model id>`. When the ACP child is OpenCode and any variable is missing or invalid, the plugin does not start it (OpenCode would otherwise pick its own default provider); it logs one `fregoli agent: no model endpoint (...)` line and the chat answers with the stub. Neither Fregoli nor its tests call the endpoint; the merge gate uses a fake ACP child and needs no vendor key.
 
 ### 8c. Assistant
 

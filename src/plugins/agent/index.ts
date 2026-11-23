@@ -5,6 +5,7 @@ import { Service } from "cordis";
 import { version } from "../../version.ts";
 import { AcpClient, type McpServerSpec } from "./acp.ts";
 import { spawnAcpAgent, whichGrok } from "./grok.ts";
+import { isOpenCode, modelEnv, noEndpointMessage, readModelEndpoint } from "./model.ts";
 
 declare module "cordis" {
   interface Context {
@@ -103,6 +104,8 @@ export type AgentConfig = {
   promptTimeoutMs?: number;
   acpHang?: boolean;
   acpPauseMs?: number;
+  /** Where the model endpoint variables are read from (default `process.env`). */
+  modelEnv?: NodeJS.ProcessEnv;
 };
 
 export const agentPlugin = {
@@ -117,6 +120,14 @@ export const agentPlugin = {
     const spawnEnv: NodeJS.ProcessEnv = {};
     if (config.acpHang) spawnEnv.FAKE_ACP_HANG = "1";
     if (config.acpPauseMs) spawnEnv.FAKE_ACP_PAUSE_MS = String(config.acpPauseMs);
+    const model = readModelEndpoint(config.modelEnv ?? process.env);
+    if (model.endpoint) {
+      Object.assign(spawnEnv, modelEnv(model.endpoint));
+    } else if (isOpenCode(config.acpCommand ?? whichGrok() ?? "")) {
+      // OpenCode without an operator endpoint would fall back to its own default vendor.
+      console.warn(noEndpointMessage(model.problem));
+      return;
+    }
     const mcpPath = fileURLToPath(new URL("../../mcp.ts", import.meta.url));
     const mcpServers: McpServerSpec[] = config.origin
       ? [
