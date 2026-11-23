@@ -64,8 +64,14 @@ export function noEndpointMessage(problem: string): string {
 
 /**
  * OpenCode config (the `OPENCODE_CONFIG_CONTENT` shape) that points OpenCode at
- * the endpoint through its OpenAI-compatible Chat Completions provider package.
- * It only sets `model` and `providers`, so it merges shallowly with the slim
+ * the endpoint through the AI SDK's OpenAI-compatible Chat Completions provider.
+ *
+ * `opencode acp` reads the V1 config shape (`provider` / `npm` / `options`). The newer
+ * `providers` / `package` / `settings` shape is dropped there ("cannot be represented
+ * in V1", checked with OpenCode 1.18.34 and 1.19.6), and OpenCode would then fall back
+ * to its own default vendor.
+ *
+ * It only sets `model` and `provider`, so it merges shallowly with the slim
  * profile: `opencodeEnv(openCodeModelConfig(endpoint))` in `opencode.ts` puts both into one
  * `OPENCODE_CONFIG_CONTENT`. The key itself is inherited from the environment, not copied.
  */
@@ -73,12 +79,12 @@ export function openCodeModelConfig(endpoint: ModelEndpoint): Record<string, unk
   return {
     $schema: "https://opencode.ai/config.json",
     model: `${MODEL_PROVIDER_ID}/${endpoint.model}`,
-    providers: {
+    provider: {
       [MODEL_PROVIDER_ID]: {
         name: "Fregoli model endpoint",
         env: [MODEL_API_KEY_ENV],
-        package: "@opencode/ai/providers/openai-compatible",
-        settings: {
+        npm: "@ai-sdk/openai-compatible",
+        options: {
           baseURL: endpoint.baseURL,
           apiKey: `{env:${MODEL_API_KEY_ENV}}`,
         },

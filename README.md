@@ -89,7 +89,7 @@ npx tsx src/cli.ts
 
 With a container, pass them with `docker run -e FREGOLI_MODEL_BASE_URL -e FREGOLI_MODEL_API_KEY -e FREGOLI_MODEL_ID ...`. In a [Hermetarium](https://github.com/pihme/hermetarium) habitat the base URL is `http://model.hermetarium.test/v1`. The gate holds the real key and sets `Authorization` on the way out, so the key variable inside the box is only a placeholder.
 
-Fregoli hands these to OpenCode, the in-app agent, as a provider in the same `OPENCODE_CONFIG_CONTENT` that carries the slim profile below (`@opencode/ai/providers/openai-compatible`, model `fregoli/<model id>`). That config names the key variable (`{env:FREGOLI_MODEL_API_KEY}`), not the key. If a variable is missing or the base URL is invalid, Fregoli does not start OpenCode at all, so it cannot fall back to a vendor of its own. It logs one line, `fregoli agent: no model endpoint (...)`, and the chat answers with the stand-in.
+Fregoli hands these to OpenCode, the in-app agent, as a provider in the same `OPENCODE_CONFIG_CONTENT` that carries the slim profile below (`provider.fregoli` with the AI SDK package `@ai-sdk/openai-compatible`, model `fregoli/<model id>`). That config names the key variable (`{env:FREGOLI_MODEL_API_KEY}`), not the key. If a variable is missing or the base URL is invalid, Fregoli does not start OpenCode at all, so it cannot fall back to a vendor of its own. It logs one line, `fregoli agent: no model endpoint (...)`, and the chat answers with the stand-in.
 
 The app remembers its setup in `fregoli.json`, in the folder where you started Fregoli:
 

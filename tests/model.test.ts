@@ -51,10 +51,11 @@ test("a full endpoint becomes an OpenCode Chat Completions provider without the 
   assert.deepEqual(r.endpoint, { baseURL: "http://127.0.0.1:9/v1", model: "qwen3-coder" });
   const cfg = openCodeModelConfig(r.endpoint!);
   assert.equal(cfg.model, "fregoli/qwen3-coder");
-  const provider = (cfg.providers as Record<string, Record<string, unknown>>).fregoli!;
-  assert.equal(provider.package, "@opencode/ai/providers/openai-compatible");
+  assert.equal(cfg.providers, undefined);
+  const provider = (cfg.provider as Record<string, Record<string, unknown>>).fregoli!;
+  assert.equal(provider.npm, "@ai-sdk/openai-compatible");
   assert.deepEqual(provider.env, ["FREGOLI_MODEL_API_KEY"]);
-  assert.deepEqual(provider.settings, {
+  assert.deepEqual(provider.options, {
     baseURL: "http://127.0.0.1:9/v1",
     apiKey: "{env:FREGOLI_MODEL_API_KEY}",
   });
@@ -63,7 +64,7 @@ test("a full endpoint becomes an OpenCode Chat Completions provider without the 
   assert.ok(!env.OPENCODE_CONFIG_CONTENT!.includes(KEY));
   const merged = JSON.parse(env.OPENCODE_CONFIG_CONTENT!) as Record<string, unknown>;
   assert.equal(merged.model, cfg.model);
-  assert.deepEqual(merged.providers, cfg.providers);
+  assert.deepEqual(merged.provider, cfg.provider);
 });
 
 test("a model id with a slash stays one OpenCode model", () => {
@@ -152,7 +153,7 @@ test("another ACP child still starts without an endpoint", async () => {
     const cfg = JSON.parse(seen.config!) as Record<string, unknown>;
     assert.ok(cfg.agent);
     assert.equal(cfg.model, undefined);
-    assert.equal(cfg.providers, undefined);
+    assert.equal(cfg.provider, undefined);
   } finally {
     await stopKernel(ctx);
   }

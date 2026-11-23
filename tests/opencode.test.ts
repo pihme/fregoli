@@ -133,7 +133,11 @@ test("one OPENCODE_CONFIG_CONTENT carries both the slim profile and the model pr
   // Model provider
   assert.equal(cfg.model, modelConfig.model);
   assert.equal(cfg.model, "fregoli/test-model");
-  assert.deepEqual(cfg.provider ?? cfg.providers, modelConfig.provider ?? modelConfig.providers);
+  assert.deepEqual(cfg.provider, modelConfig.provider);
+  assert.equal(
+    (cfg.provider as Record<string, { options: { baseURL: string } }>).fregoli!.options.baseURL,
+    MODEL_ENV.FREGOLI_MODEL_BASE_URL,
+  );
   // Names the key variable, never the key
   assert.equal(env.OPENCODE_CONFIG_CONTENT!.includes(MODEL_ENV.FREGOLI_MODEL_API_KEY), false);
   assert.ok(env.OPENCODE_CONFIG_CONTENT!.includes("{env:FREGOLI_MODEL_API_KEY}"));
