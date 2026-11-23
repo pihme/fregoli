@@ -19,4 +19,4 @@ npm ci
 npm test
 ```
 
-The tests use a stand-in for the Grok CLI. A live Grok turn needs the Grok CLI authenticated (`grok` on `PATH`).
+The tests use a stand-in for OpenCode (a fake ACP child) and never call a model. A live turn needs `opencode` on `PATH` with a model configured in OpenCode.

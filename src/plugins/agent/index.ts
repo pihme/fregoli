@@ -4,7 +4,7 @@ import type { Context } from "cordis";
 import { Service } from "cordis";
 import { version } from "../../version.ts";
 import { AcpClient, type McpServerSpec } from "./acp.ts";
-import { spawnAcpAgent, whichGrok } from "./grok.ts";
+import { spawnAcpAgent, whichOpencode } from "./opencode.ts";
 
 declare module "cordis" {
   interface Context {
@@ -20,7 +20,8 @@ export type ChatLive = {
 };
 
 export class Chat extends Service {
-  grok: ChildProcess | null = null;
+  /** The OpenCode ACP child (`opencode acp`), or null when the stub answers. */
+  child: ChildProcess | null = null;
   acp: AcpClient | null = null;
   promptTimeoutMs = 300_000;
   restart: (() => Promise<void>) | null = null;
@@ -131,7 +132,7 @@ export const agentPlugin = {
     if (config.promptTimeoutMs) chat.promptTimeoutMs = config.promptTimeoutMs;
 
     const connect = async (child: ChildProcess): Promise<void> => {
-      chat.grok = child;
+      chat.child = child;
       const acp = new AcpClient(child);
       await acp.start({ cwd: appRoot, mcpServers });
       chat.acp = acp;
@@ -145,7 +146,7 @@ export const agentPlugin = {
         args: config.acpArgs,
         env: Object.keys(spawnEnv).length ? spawnEnv : undefined,
       });
-      chat.grok = child;
+      chat.child = child;
       if (!child) return;
       await connect(child);
     };
@@ -161,5 +162,5 @@ export const agentPlugin = {
   },
 };
 
-export { whichGrok };
+export { whichOpencode };
 

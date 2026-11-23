@@ -20,6 +20,20 @@ The canvas is one HTML string. setCanvas replaces that whole string. When the us
 Plugin file plugins/runtime/<name>.ts: import type { Context } from "cordis"; export const plugin = { name: "<name>", inject: ["ui"], apply(ctx: Context) { ctx.effect(() => { ctx.ui.setCanvas("...html..."); return () => ctx.ui.setCanvas(""); }); } };
 Mount with load_plugin { "file": "plugins/runtime/<name>.ts" }. Call reload_page {} once. The tab stays until the reply finishes, then turns away and reloads once. Judge from nextCanvas only. html is the tab still on screen. Do not reload again. Reply in one sentence only if nextCanvas shows the change. If the user points at an element, that element is the one they mean. Do not highlight the assistant. Do not unload web or agent. Do not mount a half-written file.`;
 
+/**
+ * The in-app agent runs unattended, so a permission request is approved, like
+ * `--always-approve` before: prefer the agent's "allow always" option, then "allow once".
+ * OpenCode offers `always` / `once` / `reject`.
+ */
+export function pickAllowOption(options: unknown): string {
+  const list = Array.isArray(options) ? (options as Array<{ optionId?: unknown; kind?: unknown }>) : [];
+  for (const kind of ["allow_always", "allow_once"]) {
+    const hit = list.find((o) => o.kind === kind && typeof o.optionId === "string");
+    if (hit) return hit.optionId as string;
+  }
+  return "always";
+}
+
 export class AcpClient {
   private nextId = 1;
   private pending = new Map<number, Pending>();
@@ -55,7 +69,7 @@ export class AcpClient {
     } catch {
       return;
     }
-    if (msg.method === "session/update" || msg.method === "x.ai/session/update") {
+    if (msg.method === "session/update") {
       this.onUpdate(msg.params ?? {});
       return;
     }
@@ -73,7 +87,7 @@ export class AcpClient {
 
   private clientResult(method: string, params: Record<string, unknown>): unknown {
     if (method.includes("requestPermission") || method.endsWith("/request_permission")) {
-      return { outcome: { outcome: "selected", optionId: "allow-always" } };
+      return { outcome: { outcome: "selected", optionId: pickAllowOption(params.options) } };
     }
     if (method.includes("read_text_file") || method.endsWith("readTextFile")) {
       const path = String(params.path ?? "");
@@ -143,11 +157,9 @@ export class AcpClient {
       args: s.args ?? [],
       env: Object.entries(s.env ?? {}).map(([name, value]) => ({ name, value })),
     }));
-    const result = (await this.send("session/new", {
-      cwd: opts.cwd,
-      mcpServers,
-      _meta: { yoloMode: true, systemPromptOverride: FREGOLI_RULES },
-    })) as { sessionId?: string };
+    const result = (await this.send("session/new", { cwd: opts.cwd, mcpServers })) as {
+      sessionId?: string;
+    };
     this.sessionId = result.sessionId ?? "default";
   }
 
