@@ -1,6 +1,6 @@
 # Fregoli
 
-A self-evolving web application on a Cordis kernel. Status: first slice implemented (web, assistant, Grok ACP, loader gate, page bridge, MCP tools).
+A self-evolving web application on a Cordis kernel. Status: first slice implemented (web, assistant, OpenCode ACP, loader gate, page bridge, MCP tools).
 
 ## 1. Name
 
@@ -22,17 +22,17 @@ The paper name for the product shape is a **self-evolving agent harness**: the a
 A **Cordis kernel** (the TypeScript meta-framework, not a from-scratch calculus and not a wrap of DeepSeek Harness). Capabilities are plugins. On a default first start, three plugins are mounted:
 
 1. **Web** — HTTP server on TCP 8080 and the canvas (a welcome canvas from `plugins/shipped/welcome.ts` is shown at boot).
-2. **Agent** — Cordis plugin that runs **Grok CLI** (ACP). Grok is the coding agent (shell, skills, MCP). The plugin is not the kernel.
+2. **Agent** — Cordis plugin that runs **OpenCode 2** over ACP. OpenCode is the coding agent (shell, file tools, MCP). The plugin is not the kernel. This replaces the earlier Grok CLI decision.
 3. **Assistant** — lower-right control and chat panel. A boot plugin, not welded to web. Replaceable and removable (§8c).
 
 ```
 operator
   └── this process (Cordis kernel)
         ├── plugin: web        (HTTP 8080, canvas)
-        ├── plugin: agent      (Grok CLI child; ACP)
+        ├── plugin: agent      (OpenCode 2 child; ACP)
         ├── plugin: assistant  (lower-right control + chat; optional)
         └── Cordis plugins the agent mounts later (UI and other in-process fibers)
-            Grok skills and MCP servers live on disk / as Grok children, not as Cordis plugins
+            The page-bridge MCP server is an OpenCode child, not a Cordis plugin
 ```
 
 There is no in-process sandbox API for tools. The agent uses ordinary processes (shell, package managers, MCP servers). Where that process tree is allowed to run is a **deployment** choice (§6).
@@ -40,7 +40,7 @@ There is no in-process sandbox API for tools. The agent uses ordinary processes 
 ## 4. What it is not
 
 - Not a habitat or supervisor. It does not own walls, a network log, or fail-closed routing.
-- Not DeepSeek Harness. We do not wrap `dsh`. Cordis is the kernel. The **agent plugin** is a Cordis module that **spawns Grok CLI**; Grok is not the kernel.
+- Not DeepSeek Harness. We do not wrap `dsh`. Cordis is the kernel. The **agent plugin** is a Cordis module that **spawns OpenCode 2**; OpenCode is not the kernel.
 - Not a per-command host sandbox. Tools the agent runs are ordinary processes.
 - Not a static site with an LLM chatbot bolted on. The chat is how the agent changes the *same* running graph that serves the canvas.
 - Not a WebAssembly plugin host. Plugins are TypeScript Cordis modules. There is no in-process WASM sandbox.
@@ -55,12 +55,12 @@ There is no in-process sandbox API for tools. The agent uses ordinary processes 
 | Boot plugins | Web, agent, and assistant, mounted when the process starts. Assistant may later be omitted. |
 | Canvas | The main visible surface of the web app. Shows the welcome canvas (`plugins/shipped/welcome.ts`) at boot. Other plugins may replace it. |
 | Assistant | Lower-right control and the chat UI it opens. A Cordis plugin. Talks to the agent plugin in-process. Replaceable and removable. |
-| Skill | Grok skill: a directory with `SKILL.md` (YAML frontmatter + markdown). Instruction pack, not a Cordis plugin. |
-| MCP server | A process that speaks Model Context Protocol. **Grok CLI** is the client. Config lives in Grok’s TOML. |
-| App root | Working directory of the `fregoli` process: Cordis config, `.grok/skills/`, `.grok/config.toml`. |
-| Session log | Grok’s own session (what the model sees). Fregoli does not keep a second prompt log. The assistant panel shows one `Working (tool)` status line for the current turn, then the reply. The message thread survives a reload. |
+| Skill | An instruction pack on disk. The in-app session does not load a skill catalog. Not a Cordis plugin. |
+| MCP server | A process that speaks Model Context Protocol. **OpenCode** is the client. The page bridge is passed in ACP `session/new`. |
+| App root | Working directory of the `fregoli` process: Cordis config and the canvas plugins. |
+| Session log | OpenCode’s own session (what the model sees). Fregoli does not keep a second prompt log. The assistant panel shows one `Working (tool)` status line for the current turn, then the reply. The message thread survives a reload. |
 | Fiber | A running plugin instance and its lifecycle (`INACTIVE` → `RELOADING` → `ACTIVE` → `UNLOADING`). |
-| Page bridge | Browser ↔ web plugin ↔ agent plugin ↔ Grok. Lets the agent see the live page and receive user UI actions. |
+| Page bridge | Browser ↔ web plugin ↔ agent plugin ↔ OpenCode. Lets the agent see the live page and receive user UI actions. |
 
 ## 6. Deployment
 
@@ -74,7 +74,7 @@ This process is a Node program that listens on **8080**. The listen address is `
 
 [Hermetarium](https://github.com/pihme/hermetarium) is **not required**. A laptop `node` process is a valid deployment. Without a habitat there is no wall-side I/O log and no fail-closed network; that is accepted for that deployment, not a defect of this spec.
 
-**Cordis effects wrap the process the agent plugin itself starts:** the Grok CLI child. The plugin passes the page-bridge MCP server spec (`src/mcp.ts`, `FREGOLI_URL`) in ACP `session/new`, and Grok spawns that process. The inverse kills the Grok child, which takes the MCP server with it. Grok’s other descendants (shell, `npm`, MCP servers listed in Grok’s TOML) are Grok’s. Files and packages on disk remain.
+**Cordis effects wrap the process the agent plugin itself starts:** the OpenCode child. The plugin passes the page-bridge MCP server spec (`src/mcp.ts`, `FREGOLI_URL`) in ACP `session/new`, and OpenCode spawns that process. The inverse kills the OpenCode child, which takes the MCP server with it. OpenCode’s other descendants (shell, `npm`) are OpenCode’s. Files and packages on disk remain.
 
 ## 7. Kernel
 
@@ -83,9 +83,9 @@ Use **Cordis** (https://github.com/cordiverse/cordis). Do not reimplement the pa
 - `ctx.effect` is the only mutation primitive. Listeners, HTTP routes, child processes, and service registration go through it so unload reverses them.
 - Plugins declare `inject` and `provide`. The loader activates a fiber when injects exist and deactivates it when they vanish.
 - Consumers look up services on `ctx` (stable keys). They do not import a concrete implementation.
-- Cordis’s loader mounts plugins from config under the app root. The agent plugin exposes load/unload to Grok as tools (or as the page-bridge MCP). Native ESM is not the load/unload mechanism (Node ESM cannot evict modules).
+- Cordis’s loader mounts plugins from config under the app root. The agent plugin exposes load/unload to OpenCode as tools (the page-bridge MCP). Native ESM is not the load/unload mechanism (Node ESM cannot evict modules).
 
-The kernel has no product features. Web UI and the Grok-CLI bridge are plugins. Skills and MCP belong to Grok CLI.
+The kernel has no product features. Web UI and the OpenCode bridge are plugins. Shell, file tools, and MCP belong to OpenCode.
 
 ## 8. Boot plugins
 
@@ -99,36 +99,42 @@ If the web plugin unloads, 8080 closes. The agent must not unload it without a r
 
 ### 8b. Agent
 
-**Provides** the chat service (ACP session to Grok). The assistant plugin **injects** that service. Implementation: spawn **Grok CLI** as a child and speak [ACP](https://agentclientprotocol.com) (`grok agent --always-approve stdio`, working directory = app root). Unload kills that process (`ctx.effect`). This is not the Grok TUI, and Grok is not the Cordis kernel.
+**Provides** the chat service (one ACP session to OpenCode). The assistant plugin **injects** that service. Implementation: spawn **OpenCode 2** as a child and speak [ACP](https://agentclientprotocol.com) (`opencode acp`, session directory = app root). This replaces the earlier decision to spawn Grok CLI (`grok agent --always-approve stdio`). Unload kills that process (`ctx.effect`). OpenCode is not the Cordis kernel. One session stays open for the life of the process. A page reload does not start another.
 
-Grok already has shell, file tools, skills, and MCP. We do not reimplement those in the agent plugin. Default model is whatever that CLI uses (override with Grok’s own flags/config). Auth: `XAI_API_KEY`, or a habitat ACL that injects `Authorization` on the path to the xAI origin.
+OpenCode already has shell, file tools, and MCP. We do not reimplement those in the agent plugin. The model is not chosen by OpenCode’s own login. The operator sets an OpenAI-compatible Chat Completions endpoint, and there is no vendor default:
 
-The agent is **told the setup** (system context / rules, not a secret): this process is a Cordis graph; boot plugins are web, agent, and assistant; the assistant UI is replaceable and may be removed; it changes the app by writing Cordis plugins, Grok skills, and MCP servers and asking the loader to load or unload; the canvas is what users see; half-written modules must not be mounted; it may install and run ordinary tools (Grok’s shell). If it is running in a sealed habitat, that is extra context, not a different agent.
+- `FREGOLI_MODEL_BASE_URL` — base URL, for example `http://model.hermetarium.test/v1`
+- `FREGOLI_MODEL` — model id the endpoint expects
+- `FREGOLI_MODEL_API_KEY` — API key, from the environment only, never from a committed file
+
+OpenCode 2 is told about that endpoint in `OPENCODE_CONFIG_CONTENT` (`providers.<id>.package` is `@opencode/ai/providers/openai-compatible`, `settings.baseURL`, `settings.apiKey` as `{env:FREGOLI_MODEL_API_KEY}`). The Responses API is out of scope. A habitat may inject the same three at the gate. Other providers are denied, so a key that happens to be in the environment cannot select a vendor.
+
+The in-app session is slim. Checked against OpenCode 2.3.2 by reading the first Chat Completions body:
+
+- The system prompt is Fregoli’s own rules, set as OpenCode 2 `agents.fregoli.system`. That field replaces the harness prompt. The older `prompt.system` field is not applied.
+- `skill.use` and the skill permission are denied for `*`. A skill planted in the child’s config directory does not appear in the request.
+- `OPENCODE_DISABLE_PROJECT_CONFIG=1` keeps the app root’s `AGENTS.md` out of the request. The session directory stays the app root, so the agent can still edit plugins there.
+- `OPENCODE_DISABLE_CLAUDE_CODE=1` skips `CLAUDE.md`.
+- `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME`, and `XDG_STATE_HOME` point at an empty directory for this process, so the operator’s global OpenCode config is not this session.
+- What still lands after the rules is OpenCode’s own tool guidance for that turn, then the user text. The page-bridge MCP server is passed on `session/new`, as before.
+
+The agent is **told the setup** (system context / rules, not a secret): this process is a Cordis graph; boot plugins are web, agent, and assistant; the assistant UI is replaceable and may be removed; it changes the app by writing Cordis plugins and asking the loader to load or unload; the canvas is what users see; half-written modules must not be mounted; it may install and run ordinary tools (OpenCode’s shell). If it is running in a sealed habitat, that is extra context, not a different agent.
 
 It can:
 
-- Run **shell** and file tools (Grok built-ins).
+- Run **shell** and file tools (OpenCode built-ins).
 - **See the live page** the operator is looking at, and receive user clicks/highlights, via the page bridge (§8d).
-- Write a **Cordis plugin** (TypeScript module), register it with the loader, wait until the fiber is `ACTIVE`. That may change routes and the canvas. The loader is a tool or MCP the agent plugin exposes to Grok.
-- Write a **skill** (Grok `SKILL.md` under the app root). Grok discovers it on the next turn or new session.
-- Write and configure an **MCP server**; Grok is the client.
+- Write a **Cordis plugin** (TypeScript module), register it with the loader, wait until the fiber is `ACTIVE`. That may change routes and the canvas. The loader is the page-bridge MCP the agent plugin exposes to OpenCode.
 
-**Skills** are Grok’s format (Grok CLI loads them; we do not parse them ourselves except to write files):
+The in-app session does not load a skill catalog. `.grok/skills/fregoli-app/` remains in the repo for someone editing Fregoli from outside. It is not part of this session. A skill is not a Cordis plugin.
 
-- Directory containing `SKILL.md`.
-- YAML frontmatter: required `name` (lowercase, digits, hyphens) and `description`. Optional: `when-to-use`, `allowed-tools`, `argument-hint`, `compatibility`, `license`, `metadata`.
-- Markdown body: the procedure.
-- Discovery is Grok’s: `<app root>/.grok/skills/`, then `~/.grok/skills/`, plus Grok’s other documented roots. New skills go under the app root so they travel with the app.
+**MCP** for the page bridge is passed in `session/new`. We do not add a second MCP client, and we do not read `[mcp_servers.<name>]` from a Grok TOML file. Fregoli does not implement HTTP MCP itself. Marketplace plugins are out of scope until asked. Say **Cordis plugin** when we mean in-process load/unload.
 
-A skill is not a Cordis plugin.
-
-**MCP** is Grok’s. We do not add a second MCP client. Config: `[mcp_servers.<name>]` in `<app root>/.grok/config.toml`. Stdio is what we document. If the agent writes an HTTP/SSE server into that file, Grok CLI may use it; Fregoli does not implement HTTP MCP itself. **Grok marketplace plugins** (skill+MCP+hook bundles) are out of scope until asked. Say **Cordis plugin** when we mean in-process load/unload.
-
-A first-slice stub is allowed only if the `grok` binary is missing. When `grok` is on `PATH`, the agent plugin must use it, not a bare chat API and not another vendor CLI.
+If `opencode` is not on `PATH`, the chat answers with a stub. If the binary is present but any of the three endpoint variables is missing, the chat names the variables and does not call a model. The agent plugin does not call the Chat Completions URL itself.
 
 ### 8c. Assistant
 
-The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a [Helferlein](https://github.com/pihme/helferlein) figure in the **lower right** (pinned build `helferlein.min.js` v1.0.0, served at `/helferlein.min.js`). Resting, the figure is the button that opens the panel. While the panel is open the figure floats above it. The page calls `summon` when the panel opens, `working` while a reply is in flight, `idle` when the reply did not change the mounted plugins, and `dismiss` when the panel closes. Reload requests during a reply are held. When the reply is ready, one spin plays and the tab reloads onto the final canvas; the new page calls `returnFromBack()`. A reply that does not change the canvas does not spin. A plugin load or unload that leaves the canvas HTML unchanged still calls `applied` when the reply finishes. The panel polls the live turn and keeps a single status line, `Working (read file)`, replacing it as tools run. The same tool again shows a count, `Working (read file 2x)`. The message thread is kept in `sessionStorage` and restored after a reload. The reply text stays available after a reload. A turn longer than five minutes is cancelled and that Grok child is replaced; the same prompt is not sent again. The browser keeps the figure’s look in `localStorage`. Reduced motion and the no-WebGL fallback belong to Helferlein. Chat is in-process (assistant → agent plugin → Grok ACP). Outbound network is Grok calling the model or a remote tool. The page bridge is local HTTP between the tab and this process, not that outbound path.
+The assistant is its own Cordis plugin. It `provide`s a well-known key (for example `assistantUi`). Default UI: a [Helferlein](https://github.com/pihme/helferlein) figure in the **lower right** (pinned build `helferlein.min.js` v1.0.0, served at `/helferlein.min.js`). Resting, the figure is the button that opens the panel. While the panel is open the figure floats above it. The page calls `summon` when the panel opens, `working` while a reply is in flight, `idle` when the reply did not change the mounted plugins, and `dismiss` when the panel closes. Reload requests during a reply are held. When the reply is ready, one spin plays and the tab reloads onto the final canvas; the new page calls `returnFromBack()`. A reply that does not change the canvas does not spin. A plugin load or unload that leaves the canvas HTML unchanged still calls `applied` when the reply finishes. The panel polls the live turn and keeps a single status line, `Working (read file)`, replacing it as tools run. The same tool again shows a count, `Working (read file 2x)`. The message thread is kept in `sessionStorage` and restored after a reload. The reply text stays available after a reload. A turn longer than five minutes is cancelled and that OpenCode child is replaced; the same prompt is not sent again. The browser keeps the figure’s look in `localStorage`. Reduced motion and the no-WebGL fallback belong to Helferlein. Chat is in-process (assistant → agent plugin → OpenCode ACP). Outbound network is OpenCode calling the configured model endpoint or a remote tool. The page bridge is local HTTP between the tab and this process, not that outbound path.
 
 It is **replaceable**: another plugin may `provide` the same key (new layout, new copy, no button, a menu item, …).
 
@@ -142,15 +148,15 @@ Loader config (which extra plugins to mount besides the default first-start set)
 
 ### 8d. Page bridge
 
-Grok does not run in the browser. The operator’s tab is a different process. The agent must still **see what the user sees** on this app’s page (canvas and, if mounted, assistant), not only the source files on disk.
+OpenCode does not run in the browser. The operator’s tab is a different process. The agent must still **see what the user sees** on this app’s page (canvas and, if mounted, assistant), not only the source files on disk.
 
-**Observe.** A live connection from the browser to the web plugin (WebSocket or equivalent) carries a snapshot of the **current document**: the **serialized DOM** of this origin (the app root), plus selected metadata (URL, viewport, focused element). That is the required shape. An accessibility tree or a screenshot may be added later; they are not required. Not other browser tabs, not cross-origin iframes we do not control. The agent plugin exposes this to Grok as tools. DOM capture and click handling stay **in the Fregoli Node process**. Grok is only the MCP **client** (D33): the agent plugin hands Grok the server spec in ACP `session/new`, and Grok spawns `src/mcp.ts`. Unloading the agent kills Grok, which takes that server with it. If no browser is connected, observe returns an error, not an empty fake page. If several tabs are connected, the snapshot is the **most recently focused** connected tab. The same response includes `nextCanvas`, the canvas HTML the server will serve. During a reply the on-screen DOM stays on the previous canvas until that reply finishes; judge a canvas change from `nextCanvas`.
+**Observe.** A live connection from the browser to the web plugin (WebSocket or equivalent) carries a snapshot of the **current document**: the **serialized DOM** of this origin (the app root), plus selected metadata (URL, viewport, focused element). That is the required shape. An accessibility tree or a screenshot may be added later; they are not required. Not other browser tabs, not cross-origin iframes we do not control. The agent plugin exposes this to OpenCode as tools. DOM capture and click handling stay **in the Fregoli Node process**. OpenCode is only the MCP **client** (D33): the agent plugin hands OpenCode the server spec in ACP `session/new`, and OpenCode spawns `src/mcp.ts`. Unloading the agent kills OpenCode, which takes that server with it. If no browser is connected, observe returns an error, not an empty fake page. If several tabs are connected, the snapshot is the **most recently focused** connected tab. The same response includes `nextCanvas`, the canvas HTML the server will serve. During a reply the on-screen DOM stays on the previous canvas until that reply finishes; judge a canvas change from `nextCanvas`.
 
 **Act.** The stock assistant has a **Point** button at the top of the chat. The operator clicks an element on the canvas. The hit becomes the control a person would mean: the button, not a decorative edge or an icon inside it. The chat message names that element (role, accessible name, surrounding section, selector). The highlight is a filled shape on the element, not a hairline, and it is not drawn on the assistant. The agent can also highlight a canvas target and wait for a click. That click comes back as a tool result with the same description. The agent does not silently drive the operator’s pointer.
 
-Path: browser → web plugin → agent plugin → Grok ACP/MCP → model. Unload of web or agent tears down the bridge (`ctx.effect`).
+Path: browser → web plugin → agent plugin → OpenCode ACP/MCP → model. Unload of web or agent tears down the bridge (`ctx.effect`).
 
-The snapshot Grok sees is the DOM, not a screenshot.
+The snapshot OpenCode sees is the DOM, not a screenshot.
 
 ## 9. Self-modification and the gate
 
@@ -158,7 +164,7 @@ A file watcher is **not** “every disk write becomes the UI.” A half-written 
 
 - The loader (or an agent tool that talks to the loader) mounts a plugin only when load/`apply` succeeds. The UI reflects **ACTIVE** fibers, not the contents of a dirty editor buffer.
 - Failed load: fiber does not become `ACTIVE`; previous provider stays if it still exists; the session log records the error.
-- Unload runs inverses (routes dropped, the Grok child killed and with it the page-bridge MCP server, canvas contribution removed).
+- Unload runs inverses (routes dropped, the OpenCode child killed and with it the page-bridge MCP server, canvas contribution removed).
 - Hot replace: unload then load, or Cordis HMR through the loader — same gate.
 
 The agent improving the app is **load/unload of plugins**, not rewrite-a-monolith-and-restart-Node. Restarting Node is a last resort and drops in-process state.
@@ -167,7 +173,7 @@ The agent improving the app is **load/unload of plugins**, not rewrite-a-monolit
 
 | Log | Where | What |
 | --- | --- | --- |
-| Session log | Grok’s session files | Prompts and tool calls the model saw. The assistant UI may stream the live ACP transcript. |
+| Session log | OpenCode’s session files | Prompts and tool calls the model saw. The assistant UI may stream the live ACP transcript. |
 | Network I/O log | Optional, outside this process | Packets that leave the machine or habitat, if the deployment provides one ([Hermetarium](https://github.com/pihme/hermetarium) does) |
 
 The session log is required. A wall-side I/O log is a property of the deployment, not of the kernel.
@@ -188,11 +194,11 @@ Specified so a later hello-world has a bar. Implemented (see status above).
 
 1. Kernel boots; web, agent, and stock assistant fibers `ACTIVE`.
 2. GET `/` shows the canvas (welcome canvas at boot) + lower-right assistant.
-3. Assistant chat reaches the agent. Stub only if `grok` is not on `PATH`; otherwise Grok CLI over ACP.
+3. Assistant chat reaches the agent. Stub only if `opencode` is not on `PATH`; otherwise OpenCode 2 over ACP. A missing model endpoint is reported and does not call a vendor.
 4. Agent (or a test stand-in) mounts a plugin that draws on the canvas; reload without restarting Node.
 5. A deliberately broken plugin file does not become `ACTIVE` and does not replace the canvas.
 
-[Hermetarium](https://github.com/pihme/hermetarium) is not part of that bar. Added since the first slice: the page bridge (observe DOM + user click back to Grok) and a container image.
+[Hermetarium](https://github.com/pihme/hermetarium) is not part of that bar. Added since the first slice: the page bridge (observe DOM + user click back to the agent) and a container image. The in-app agent is OpenCode 2 over ACP, which replaced Grok CLI.
 
 ## 13. Open questions
 

@@ -19,4 +19,4 @@ npm ci
 npm test
 ```
 
-The tests use a stand-in for the Grok CLI. A live Grok turn needs the Grok CLI authenticated (`grok` on `PATH`).
+The tests use a stand-in for the OpenCode process. One test talks to a local fake Chat Completions endpoint when OpenCode 2 is on `PATH`. A live turn needs `opencode` and `FREGOLI_MODEL_BASE_URL`, `FREGOLI_MODEL`, and `FREGOLI_MODEL_API_KEY`. The merge gate does not need a real model account.

@@ -59,6 +59,6 @@ Boot fibers: `web`, `agent`, `assistant`, `loaderApi`. Do not unload `web` unles
 | `wait_click` | Highlight a canvas element and wait for the user to click it |
 | `reload_page` | Hold one reload until the reply finishes |
 
-## Skills and extra MCP
+## Skills
 
-You may write Grok skills under `.grok/skills/<name>/SKILL.md` and MCP servers in `.grok/config.toml`. Those are Grok-side. Cordis plugins are how the **canvas** changes.
+The in-app session does not load a skill catalog. Cordis plugins are how the **canvas** changes. The page-bridge MCP server is passed to OpenCode on the ACP session.
