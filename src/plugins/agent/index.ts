@@ -3,8 +3,14 @@ import type { ChildProcess } from "node:child_process";
 import type { Context } from "cordis";
 import { Service } from "cordis";
 import { version } from "../../version.ts";
-import { AcpClient, type McpServerSpec } from "./acp.ts";
-import { spawnAcpAgent, whichGrok } from "./grok.ts";
+import { AcpClient, type McpServerSpec, FREGOLI_RULES } from "./acp.ts";
+import {
+  openCodeEnv,
+  spawnAcpAgent,
+  whichOpenCode,
+  modelEndpointFromEnv,
+  type ModelEndpoint,
+} from "./opencode.ts";
 
 declare module "cordis" {
   interface Context {
@@ -20,7 +26,7 @@ export type ChatLive = {
 };
 
 export class Chat extends Service {
-  grok: ChildProcess | null = null;
+  child: ChildProcess | null = null;
   acp: AcpClient | null = null;
   promptTimeoutMs = 300_000;
   restart: (() => Promise<void>) | null = null;
@@ -103,6 +109,10 @@ export type AgentConfig = {
   promptTimeoutMs?: number;
   acpHang?: boolean;
   acpPauseMs?: number;
+  /** Model endpoint (#54); defaults to the environment, see modelEnv. */
+  model?: ModelEndpoint | null;
+  /** System prompt for the in-app session (#53); defaults to FREGOLI_RULES. */
+  rules?: string;
 };
 
 export const agentPlugin = {
@@ -129,9 +139,13 @@ export const agentPlugin = {
         ]
       : [];
     if (config.promptTimeoutMs) chat.promptTimeoutMs = config.promptTimeoutMs;
+    // #53: OpenCode's own config carries the slim profile; #54: the model
+    // endpoint. A test may pass either explicitly.
+    const endpoint = config.model ?? modelEndpointFromEnv();
+    const env = openCodeEnv(config.rules ?? FREGOLI_RULES, endpoint, spawnEnv);
 
     const connect = async (child: ChildProcess): Promise<void> => {
-      chat.grok = child;
+      chat.child = child;
       const acp = new AcpClient(child);
       await acp.start({ cwd: appRoot, mcpServers });
       chat.acp = acp;
@@ -143,9 +157,9 @@ export const agentPlugin = {
         cwd: appRoot,
         command: config.acpCommand,
         args: config.acpArgs,
-        env: Object.keys(spawnEnv).length ? spawnEnv : undefined,
+        env,
       });
-      chat.grok = child;
+      chat.child = child;
       if (!child) return;
       await connect(child);
     };
@@ -154,12 +168,12 @@ export const agentPlugin = {
       cwd: appRoot,
       command: config.acpCommand,
       args: config.acpArgs,
-      env: Object.keys(spawnEnv).length ? spawnEnv : undefined,
+      env,
     });
     if (!child) return;
     await connect(child);
   },
 };
 
-export { whichGrok };
+export { whichOpenCode, modelEndpointFromEnv };
 
